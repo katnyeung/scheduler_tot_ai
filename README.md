@@ -12,8 +12,6 @@ In our new era of programming, we’re challenging conventional ideas by buildin
 
 ## Core Concepts
 
-![image](https://github.com/user-attachments/assets/36f93e39-da00-4038-85bf-48b75277c975)
-
 ### Spring AI
 Spring AI is used as the brain of the system, orchestrating interactions with our LLM to:
 - Evaluate current decision nodes.
@@ -41,6 +39,8 @@ At the heart of our project lies the Tree of Thought:
 Once a decision is made:
 - **Action Execution:** The corresponding task is triggered—whether that’s sending an email alert, updating data, or logging the event.
 - **Refinement:** Feedback is used to update the ToT. The action outcome and any new context are fed back to adjust node relationships, ensuring the system improves over time.
+
+![Untitled diagram-2025-02-17-001636](https://github.com/user-attachments/assets/a8afb19a-ed37-4d5c-9fe3-3f8ee15cf9ad)
 
 ## Use Case Example: Autonomous Stock Analyst
 
