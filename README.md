@@ -2,55 +2,68 @@
 
 Welcome to our experimental project—an exploration of the future of programming where advanced AI reasoning meets persistent vector memory. This repository demonstrates how to rethink traditional decision-making with a novel Tree of Thought (ToT) approach, integrating Spring AI, vector databases, and autonomous scheduling.
 
+---
+
 ## Overview
 
-In our new era of programming, we’re challenging conventional ideas by building systems that can:
-- **Dynamically schedule tasks:** Trigger actions based on real-world events and timing.
-- **Incorporate deep reasoning:** Leverage a Tree of Thought (ToT) framework to decompose complex decisions into a series of interconnected, logical steps.
-- **Persist context & reasoning:** Use vector databases to store decision nodes as semantic units, complete with context and inter-node relationships.
-- **Refine autonomously:** Allow the system to learn from outcomes and automatically refine the reasoning tree for improved future decisions.
+In this project, we explore:
+- **Scheduling**: Trigger tasks at specific times or events.
+- **Tree of Thought (ToT)**: A hierarchical decision-making framework for reasoning through complex tasks.
+- **Actions**: Execute tasks based on ToT decisions.
+- **Refinement**: Continuously improve the ToT based on outcomes and feedback.
 
-## Core Concepts
+---
 
-### Spring AI
-Spring AI is used as the brain of the system, orchestrating interactions with our LLM to:
-- Evaluate current decision nodes.
-- Formulate reasoning steps.
-- Guide transitions between stages of the reasoning tree.
+## Architecture
 
-### Vector Database
-Our vector database (using options like Chroma or PGVector) stores each node in the Tree of Thought as a document containing:
-- **Node ID and Type:** Indicating whether the node represents a decision, action, or refinement.
-- **Prompt & Context:** The natural language context that the LLM will use.
-- **Relationships:** Child nodes are linked via metadata, allowing the entire reasoning tree to be reconstructed and interpreted.
-
-### Scheduler
-A scheduling component triggers processes at appropriate times or events. For instance, a daily market open check might initiate the retrieval of the current ToT, prompting the decision engine to:
-- Verify conditions (e.g., a stock price threshold).
-- Determine whether to execute an action (like sending an alert).
-
-### Tree of Thought (ToT)
-At the heart of our project lies the Tree of Thought:
-- **Purpose:** Decompose a complex decision into a structured, hierarchical tree.
-- **Structure:** Each node represents a logical query, decision, or action. The tree branches out into possible next steps (e.g., “left” for triggering an alert, “right” for holding off).
-- **LLM Integration:** The entire tree, along with a prompt for the current context, is provided to the LLM, which recommends the next stage based on learned reasoning.
-
-### Action & Refinement
-Once a decision is made:
-- **Action Execution:** The corresponding task is triggered—whether that’s sending an email alert, updating data, or logging the event.
-- **Refinement:** Feedback is used to update the ToT. The action outcome and any new context are fed back to adjust node relationships, ensuring the system improves over time.
+The following diagram illustrates the relationship between the Scheduler, Tree of Thought (ToT), Action, and Refinement:
 
 ![Untitled diagram-2025-02-17-002123](https://github.com/user-attachments/assets/4e75e6d1-a5c2-4d6a-ac0c-456c4482eb0f)
+
+### Workflow
+
+1. **Scheduler**:
+   - Triggers actions at predefined intervals or events.
+2. **Action**:
+   - Fetches the ToT from the vector database.
+   - Evaluates the current state using an LLM.
+   - Executes tasks based on ToT decisions.
+3. **Refinement**:
+   - Updates the ToT based on feedback from executed actions.
+   - Writes refined nodes back to the vector database for future use.
+
+---
 
 ## Use Case Example: Autonomous Stock Analyst
 
 Imagine a system that monitors the NVDA stock price throughout the trading day:
-1. **Scheduling:** At market open, the scheduler fetches the complete ToT from the vector DB.
-2. **ToT Decision:** The LLM evaluates the tree of decision nodes such as: "Is the current price below today's low?" The node might have branches for “yes” (trigger an alert) and “no” (wait and check later).
-3. **Action:** If the price is lower, the system automatically sends an alert email.
-4. **Refinement:** Post-action, the outcome (such as the actual price and market conditions) refines the decision tree, updating thresholds or creating new paths in the ToT.
 
-### Sample Node Representation (Stored in the Vector DB)
+1. **ToT Creation**:  
+   - Analyze critical points to determine the best price to buy NVDA stock.
+   - Create a Tree of Thought (ToT) based on multiple criteria, such as price thresholds, market trends, and volatility.
+   - Nodes in the ToT represent decisions:
+     - **Left Branch**: Leads to "Good," indicating it's a good time to buy.
+     - **Right Branch**: Leads to "Hold," meaning conditions are not ideal, and monitoring should continue.
+
+2. **Scheduling**:  
+   - Schedule the action to trigger at market open (e.g., 9:30 AM EST).
+   - Repeat every 15 minutes during trading hours to evaluate the ToT.
+
+3. **Action**:  
+   - Fetch the ToT from the vector database and evaluate it using the LLM.
+   - If the ToT returns "Good," send an email alert recommending a buy action.
+   - If the ToT returns "Hold," do nothing and wait for the next scheduled evaluation.
+
+4. **Refinement**:  
+   - Post-action, analyze the outcome (e.g., actual stock price movements and market conditions).
+   - Refine the ToT:
+     - Update thresholds or criteria for "Good" and "Hold" decisions.
+     - Add new nodes if additional conditions or factors are identified.
+   - Save the updated ToT back into the vector database for future evaluations.
+
+---
+
+## Sample Node Representation (Stored in the Vector DB)
 
 {
 "content": "Check if NVDA price is below today's low",
@@ -68,10 +81,12 @@ Imagine a system that monitors the NVDA stock price throughout the trading day:
 
 text
 
+---
+
 ## Why This Matters
 
 This project embodies a truly experimental approach to programming:
-- **Flexibility:** By decoupling decision logic (ToT) from execution, you can easily modify or extend the system in real time.
-- **Context Awareness:** With vector storage for node semantics, the AI can consider detailed context in its reasoning.
-- **Self-Improvement:** The action/refinement cycle ensures the system learns from each decision, potentially leading to smarter automation over time.
+- **Flexibility**: By decoupling decision logic (ToT) from execution, you can easily modify or extend the system in real time.
+- **Context Awareness**: With vector storage for node semantics, the AI can consider detailed context in its reasoning.
+- **Self-Improvement**: The action/refinement cycle ensures the system learns from each decision, potentially leading to smarter automation over time.
 
