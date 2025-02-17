@@ -72,3 +72,6 @@ This project embodies a truly experimental approach to programming:
 - **Flexibility:** By decoupling decision logic (ToT) from execution, you can easily modify or extend the system in real time.
 - **Context Awareness:** With vector storage for node semantics, the AI can consider detailed context in its reasoning.
 - **Self-Improvement:** The action/refinement cycle ensures the system learns from each decision, potentially leading to smarter automation over time.
+
+![image](https://github.com/user-attachments/assets/36f93e39-da00-4038-85bf-48b75277c975)
+
