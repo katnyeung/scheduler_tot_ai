@@ -10,28 +10,30 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 
 /**
- * Scheduler component that triggers ScheduleService to process scheduled trees
+ * Scheduler component that triggers scheduled ToT evaluations
  */
 @Component
 public class Scheduler {
-
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
+    private final ScheduleService scheduleService;
 
     @Autowired
-    private ScheduleService scheduleService;
+    public Scheduler(ScheduleService scheduleService) {
+        this.scheduleService = scheduleService;
+    }
 
     /**
-     * Cron job to trigger schedule processing - runs based on cron expression in properties
-     * Default: Every 5 minutes
+     * Scheduled method that runs based on the configured cron expression
+     * Default is every 5 minutes
      */
     @Scheduled(cron = "${tot.scheduler.cron:0 */5 * * * *}")
-    public void triggerScheduledJobs() {
+    public void trigger() {
         logger.info("Scheduler triggered at {}", LocalDateTime.now());
 
         try {
-            // Call the service to process schedules
-            int processedCount = scheduleService.processSchedulesForCurrentTime();
-            logger.info("Processed {} scheduled jobs", processedCount);
+            // Process all due schedules
+            int processed = scheduleService.processSchedulesForCurrentTime();
+            logger.info("Processed {} scheduled jobs", processed);
         } catch (Exception e) {
             logger.error("Error in scheduler execution: {}", e.getMessage(), e);
         }
