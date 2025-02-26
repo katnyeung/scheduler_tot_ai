@@ -20,6 +20,37 @@ The following diagram illustrates the relationship between the Scheduler, Tree o
 
 ![Untitled diagram-2025-02-17-002123](https://github.com/user-attachments/assets/4e75e6d1-a5c2-4d6a-ac0c-456c4482eb0f)
 
+### Sequence Diagram
+
+sequenceDiagram
+participant Scheduler
+participant ScheduleService
+participant TotService
+participant LLMService
+participant LogService
+participant ActionService
+
+    Scheduler->>ScheduleService: trigger(cronExpression)
+    ScheduleService->>ScheduleService: findDueSchedules()
+    
+    loop For each due schedule
+        ScheduleService->>TotService: getTreeOfThought(treeId)
+        TotService-->>ScheduleService: treeJson
+        
+        ScheduleService->>LLMService: validateTree(treeJson)
+        LLMService-->>ScheduleService: validationResult (VALID/INVALID)
+        
+        ScheduleService->>LogService: logTreeEvaluation(treeId, treeJson, validationResult)
+        
+        alt validationResult == "VALID"
+            ScheduleService->>ActionService: executeAction(action, context)
+        else validationResult == "INVALID"
+            ScheduleService->>LogService: logValidationFailure(treeId)
+        end
+        
+        ScheduleService->>ScheduleService: updateScheduleStatus(scheduleId, status)
+    end
+
 ### Workflow
 
 1. **Scheduler**:

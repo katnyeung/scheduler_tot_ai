@@ -11,9 +11,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class LLMService {
-
     private static final Logger logger = LoggerFactory.getLogger(LLMService.class);
-
     private final ChatClient chatClient;
 
     @Autowired
@@ -22,32 +20,32 @@ public class LLMService {
     }
 
     /**
-     * Query the LLM with a specific prompt
+     * Validate a Tree of Thought structure
+     * @param treeJson JSON representation of the tree
+     * @return "VALID" if the tree is valid, "INVALID" otherwise
      */
-    public String query(String prompt) {
-        logger.info("Querying LLM with prompt: {}", prompt);
+    public String validateTree(String treeJson) {
+        logger.info("Validating Tree of Thought");
 
-        try {
-            String response = this.chatClient.prompt()
-                    .user(prompt)
-                    .call()
-                    .content();
+        String systemPrompt = """
+            You are an expert validator for Tree of Thought (ToT) structures.
+       
+            Analyze the provided JSON tree structure and determine if it's valid.
+       
+            Check for proper node relationships, logical flow, and completeness.
+       
+            Respond with VALID if the tree is correct, or INVALID if there are issues.
+       
+            Follow these steps:
+                    1. Start at the root node of the tree
+                    2. At each node, evaluate the criteria based on the context
+                    3. Follow the appropriate branch based on your evaluation
+                    4. Continue until you reach a terminal node
+                    5. Return your path and final decision
+                    Format your response in VALID / INVALID
+        """;
 
-            logger.debug("LLM response: {}", response);
-            return response;
-        } catch (Exception e) {
-            logger.error("Error querying LLM: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to query LLM", e);
-        }
-    }
-
-    /**
-     * Query the LLM with a system prompt and user prompt
-     */
-    public String query(String systemPrompt, String userPrompt) {
-        logger.info("Querying LLM with system prompt and user prompt");
-        logger.debug("System prompt: {}", systemPrompt);
-        logger.debug("User prompt: {}", userPrompt);
+        String userPrompt = "Tree of Thought to validate:\n" + treeJson;
 
         try {
             String response = this.chatClient.prompt()
@@ -56,52 +54,16 @@ public class LLMService {
                     .call()
                     .content();
 
-            logger.debug("LLM response: {}", response);
-            return response;
+            // Extract VALID or INVALID from the response
+            assert response != null;
+            if (response.contains("VALID") && !response.contains("INVALID")) {
+                return "VALID";
+            } else {
+                return "INVALID";
+            }
         } catch (Exception e) {
-            logger.error("Error querying LLM: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to query LLM", e);
+            logger.error("Error validating tree: {}", e.getMessage());
+            return "INVALID";
         }
-    }
-
-    /**
-     * Validate a Tree of Thought using the LLM
-     */
-    public boolean validateTot(String totContent) {
-        logger.info("Validating Tree of Thought");
-
-        String systemPrompt = "You are an expert validator for Tree of Thought (ToT) structures. " +
-                "Your task is to validate if the provided ToT is structurally sound and logically coherent. " +
-                "Check for any inconsistencies, logical errors, or structural problems. " +
-                "Respond with VALID if the tree is correctly structured and logical, or INVALID if there are issues.";
-
-        String userPrompt = "Please validate this Tree of Thought structure:\n\n" + totContent;
-
-        String response = query(systemPrompt, userPrompt);
-
-        // Check if the response indicates the ToT is valid
-        boolean isValid = response.contains("VALID") && !response.contains("INVALID");
-
-        logger.info("Tree of Thought validation result: {}", isValid ? "VALID" : "INVALID");
-        return isValid;
-    }
-
-    /**
-     * Evaluate a Tree of Thought using the LLM and get a decision
-     */
-    public String evaluateTot(String totContent, String context) {
-        logger.info("Evaluating Tree of Thought with context");
-
-        String systemPrompt = "You are an expert at evaluating Tree of Thought (ToT) decision trees. " +
-                "Your task is to traverse the provided tree based on the given context and determine the appropriate path to take. " +
-                "Provide your decision as a clear, single-word response that corresponds to one of the branch options in the tree.";
-
-        String userPrompt = "Here is a Tree of Thought to evaluate:\n\n" +
-                totContent + "\n\n" +
-                "Context for evaluation: " + context + "\n\n" +
-                "Based on this ToT and context, what is your decision? " +
-                "Please respond with a single word corresponding to one of the branch options.";
-
-        return query(systemPrompt, userPrompt);
     }
 }
