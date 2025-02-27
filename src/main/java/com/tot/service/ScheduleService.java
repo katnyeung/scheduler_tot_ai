@@ -2,16 +2,19 @@ package com.tot.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.tot.entity.Action;
 import com.tot.entity.Schedule;
 import com.tot.repository.ScheduleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
  * Service for processing scheduled ToT evaluations
@@ -43,30 +46,98 @@ public class ScheduleService {
     }
 
     /**
-     * Process all schedules that are due now
-     * @return Number of schedules processed
+     * Process all schedules that are due now asynchronously
+     * This method returns immediately and processing happens in background
      */
-    @Transactional
-    public int processSchedulesForCurrentTime() {
-        logger.info("Processing schedules for current time: {}", LocalDateTime.now());
+    public void processSchedulesForCurrentTimeAsync() {
+        logger.info("Initiating async schedule processing for current time: {}", LocalDateTime.now());
 
         // Find schedules that are due
         List<Schedule> dueSchedules = findDueSchedules();
-        logger.info("Found {} due schedules", dueSchedules.size());
+        logger.info("Found {} due schedules to process asynchronously", dueSchedules.size());
 
-        // Process each schedule
-        int processed = 0;
+        // Process each schedule asynchronously
         for (Schedule schedule : dueSchedules) {
-            try {
-                processSchedule(schedule);
-                processed++;
-            } catch (Exception e) {
-                logger.error("Error processing schedule {}: {}", schedule.getId(), e.getMessage());
-                updateScheduleStatus(schedule.getId(), "ERROR");
-            }
+            processScheduleAsync(schedule)
+                    .exceptionally(ex -> {
+                        logger.error("Async processing of schedule {} failed: {}",
+                                schedule.getId(), ex.getMessage(), ex);
+                        try {
+                            updateScheduleStatus(schedule.getId(), "ERROR");
+                        } catch (Exception e) {
+                            logger.error("Failed to update schedule status: {}", e.getMessage());
+                        }
+                        return null;
+                    });
         }
+    }
 
-        return processed;
+    /**
+     * Process a single schedule through the entire workflow asynchronously
+     * @param schedule The schedule to process
+     * @return CompletableFuture that completes when the processing is done
+     */
+    @Async("taskExecutor")
+    public CompletableFuture<Void> processScheduleAsync(Schedule schedule) {
+        String scheduleId = schedule.getId();
+        String treeId = schedule.getTargetNodeId();
+
+        logger.info("Async processing of schedule {} for tree {} started on thread {}",
+                scheduleId, treeId, Thread.currentThread().getName());
+
+        try {
+            // 1. Mark schedule as in-progress
+            updateScheduleStatus(scheduleId, "IN_PROGRESS");
+
+            // 2. Get the tree of thought from TotService
+            String treeJson = totService.getTreeOfThought(treeId);
+            logger.info("Tree of thought retrieved for schedule {}", scheduleId);
+
+            // 3. Validate the tree with LLMService (this is the potentially long API call)
+            logger.info("Starting LLM validation for schedule {}", scheduleId);
+            String validationResult = llmService.validateTree(treeJson);
+            logger.info("LLM validation completed for schedule {}: result={}", scheduleId, validationResult);
+
+            // 4. Log the tree evaluation and save to repository
+            logService.logTreeEvaluation(treeId, treeJson, validationResult);
+
+            // 5. Execute action if tree is valid
+            if ("VALID".equals(validationResult)) {
+                // Create context for action execution
+                ObjectNode context = objectMapper.createObjectNode();
+                context.put("treeId", treeId);
+                context.put("scheduleId", scheduleId);
+                context.put("validationResult", validationResult);
+
+                // Execute the action
+                logger.info("Executing action for schedule {}", scheduleId);
+                Action action = schedule.getAction();
+                if (action != null) {
+                    actionService.executeAction(action, context);
+                } else {
+                    logger.warn("No action defined for schedule {}", scheduleId);
+                }
+
+                // Update schedule status
+                updateScheduleStatus(scheduleId, "COMPLETED");
+            } else {
+                // Log validation failure and save to repository
+                logService.logValidationFailure(treeId);
+
+                // Update schedule status
+                updateScheduleStatus(scheduleId, "FAILED");
+            }
+
+            logger.info("Async processing of schedule {} completed successfully", scheduleId);
+
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            logger.error("Error in async processing of schedule {}: {}", scheduleId, e.getMessage(), e);
+            updateScheduleStatus(scheduleId, "ERROR");
+            CompletableFuture<Void> future = new CompletableFuture<>();
+            future.completeExceptionally(e);
+            return future;
+        }
     }
 
     /**
@@ -83,56 +154,12 @@ public class ScheduleService {
     }
 
     /**
-     * Process a single schedule through the entire workflow
-     * @param schedule The schedule to process
-     */
-    @Transactional
-    public void processSchedule(Schedule schedule) {
-        String scheduleId = schedule.getId();
-        String treeId = schedule.getTargetNodeId();
-
-        logger.info("Processing schedule {} for tree {}", scheduleId, treeId);
-
-        // 1. Mark schedule as in-progress
-        updateScheduleStatus(scheduleId, "IN_PROGRESS");
-
-        // 2. Get the tree of thought from TotService
-        String treeJson = totService.getTreeOfThought(treeId);
-
-        // 3. Validate the tree with LLMService
-        String validationResult = llmService.validateTree(treeJson);
-
-        // 4. Log the tree evaluation and save to repository
-        logService.logTreeEvaluation(treeId, treeJson, validationResult);
-
-        // 5. Execute action if tree is valid
-        if ("VALID".equals(validationResult)) {
-            // Create context for action execution
-            ObjectNode context = objectMapper.createObjectNode();
-            context.put("treeId", treeId);
-            context.put("scheduleId", scheduleId);
-            context.put("validationResult", validationResult);
-
-            // Execute the action
-            actionService.executeAction(schedule.getAction(), context);
-
-            // Update schedule status
-            updateScheduleStatus(scheduleId, "COMPLETED");
-        } else {
-            // Log validation failure and save to repository
-            logService.logValidationFailure(treeId);
-
-            // Update schedule status
-            updateScheduleStatus(scheduleId, "FAILED");
-        }
-    }
-
-    /**
      * Update the status of a schedule
      * @param scheduleId ID of the schedule to update
      * @param status New status value
      */
-    private void updateScheduleStatus(String scheduleId, String status) {
+    @Transactional
+    public void updateScheduleStatus(String scheduleId, String status) {
         scheduleRepository.findById(scheduleId).ifPresent(schedule -> {
             schedule.setStatus(status);
             scheduleRepository.save(schedule);

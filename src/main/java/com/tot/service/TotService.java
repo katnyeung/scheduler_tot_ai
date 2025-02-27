@@ -1,6 +1,7 @@
 package com.tot.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -10,8 +11,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Service for managing Tree of Thought operations
@@ -69,6 +74,54 @@ public class TotService {
         } catch (JsonProcessingException e) {
             logger.error("Error serializing tree: {}", e.getMessage());
             throw new RuntimeException("Failed to serialize tree", e);
+        }
+    }
+
+    /**
+     * Save a Tree of Thought from JSON representation
+     * @param treeJson JSON string representation of the tree
+     * @return List of saved nodes
+     */
+    @Transactional
+    public List<TotNode> saveTreeOfThought(String treeJson) {
+        logger.info("Saving Tree of Thought from JSON");
+
+        try {
+            // Parse the JSON into a list of node objects
+            List<Map<String, Object>> nodeList = objectMapper.readValue(
+                    treeJson, new TypeReference<List<Map<String, Object>>>() {});
+
+            List<TotNode> savedNodes = new ArrayList<>();
+
+            // Convert and save each node
+            for (Map<String, Object> nodeMap : nodeList) {
+                TotNode node = new TotNode();
+
+                // Set basic properties
+                node.setNodeId((String) nodeMap.get("nodeId"));
+                node.setTreeId((String) nodeMap.get("treeId"));
+                node.setContent((String) nodeMap.get("content"));
+                node.setCriteria((String) nodeMap.get("criteria"));
+
+                // Handle children map
+                @SuppressWarnings("unchecked")
+                Map<String, String> children = (Map<String, String>) nodeMap.get("children");
+                if (children == null) {
+                    children = new HashMap<>();
+                }
+                node.setChildren(children);
+
+                // Save node to repository
+                savedNodes.add(totNodeRepository.save(node));
+                logger.debug("Saved node: {}", node.getNodeId());
+            }
+
+            logger.info("Saved {} nodes for Tree of Thought", savedNodes.size());
+            return savedNodes;
+
+        } catch (Exception e) {
+            logger.error("Error saving tree from JSON: {}", e.getMessage());
+            throw new RuntimeException("Failed to save Tree of Thought from JSON", e);
         }
     }
 }

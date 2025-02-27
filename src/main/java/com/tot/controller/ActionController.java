@@ -19,7 +19,7 @@ public class ActionController {
     @Operation(summary = "Execute action", description = "Perform an action based on the evaluated TOT (e.g., send alert email)")
     public ResponseEntity<String> executeAction(@RequestParam String totData) {
         // Evaluate the TOT to decide which action to take using Spring AI.
-        String evaluationResult = totService.previewTot(totData);
+        String evaluationResult = totService.getTreeOfThought(totData);
         if ("Good".equalsIgnoreCase(evaluationResult)) {
             // Trigger an action; for instance, send an email alert.
             return ResponseEntity.ok("Action executed: Email alert sent. Decision: " + evaluationResult);

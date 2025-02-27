@@ -1,7 +1,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.example</groupId>
-    <artifactId>ai-scheduler</artifactId>
+    <groupId>com.tot</groupId>
+    <artifactId>schedule_agent_ai</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <parent>
         <groupId>org.springframework.boot</groupId>
@@ -25,7 +25,7 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-openai-spring-boot-starter</artifactId>
-            <version>1.0.0-M6</version>
+            <version>1.0.0-M5</version>
         </dependency>
         <!-- Swagger UI / OpenAPI -->
         <dependency>
@@ -41,9 +41,20 @@
         </dependency>
 
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+
+        <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
             <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.r2dbc</groupId>
+            <artifactId>r2dbc-spi</artifactId>
+            <version>1.0.0.RELEASE</version>
         </dependency>
     </dependencies>
 </project>

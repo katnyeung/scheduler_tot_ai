@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import java.time.LocalDateTime;
 
 /**
- * Scheduler component that triggers scheduled ToT evaluations
+ * Scheduler component that triggers scheduled ToT evaluations asynchronously
  */
 @Component
 public class Scheduler {
@@ -31,9 +31,9 @@ public class Scheduler {
         logger.info("Scheduler triggered at {}", LocalDateTime.now());
 
         try {
-            // Process all due schedules
-            int processed = scheduleService.processSchedulesForCurrentTime();
-            logger.info("Processed {} scheduled jobs", processed);
+            // Process all due schedules asynchronously
+            scheduleService.processSchedulesForCurrentTimeAsync();
+            logger.info("Schedule processing initiated asynchronously and will continue in background");
         } catch (Exception e) {
             logger.error("Error in scheduler execution: {}", e.getMessage(), e);
         }

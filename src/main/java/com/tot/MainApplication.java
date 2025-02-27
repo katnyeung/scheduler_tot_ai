@@ -1,4 +1,4 @@
-package com.example.aischeduler;
+package com.tot;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
