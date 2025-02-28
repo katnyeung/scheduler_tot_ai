@@ -28,10 +28,10 @@ public class UserController {
         this.llmService = llmService;
     }
 
-    @PostMapping("/update")
-    @Operation(summary = "Update ToT", description = "Create or update your Tree of Thought structure using LLM")
-    public ResponseEntity<String> manageTot(@RequestBody String prompt) {
-        logger.info("Received request to manage ToT with prompt: {}", prompt);
+    @PostMapping("/generate")
+    @Operation(summary = "Generate ToT", description = "Generate a new Tree of Thought structure using LLM")
+    public ResponseEntity<String> generateTot(@RequestBody String prompt) {
+        logger.info("Received request to generate ToT with prompt: {}", prompt);
 
         try {
             // Call the LLMService to generate a Tree of Thought
@@ -40,8 +40,25 @@ public class UserController {
             // Return the generated tree JSON
             return ResponseEntity.ok(generatedTotJson);
         } catch (Exception e) {
-            logger.error("Error managing ToT: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().body("Error updating ToT: " + e.getMessage());
+            logger.error("Error generating ToT: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Error generating ToT: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/refine")
+    @Operation(summary = "Refine ToT", description = "Refine an existing Tree of Thought with latest data and details")
+    public ResponseEntity<String> refineTot(@RequestBody String treeJson) {
+        logger.info("Received request to refine ToT");
+
+        try {
+            // Call the LLMService to refine the existing Tree of Thought
+            String refinedTotJson = llmService.refineTreeOfThought(treeJson);
+
+            // Return the refined tree JSON
+            return ResponseEntity.ok(refinedTotJson);
+        } catch (Exception e) {
+            logger.error("Error refining ToT: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Error refining ToT: " + e.getMessage());
         }
     }
 
