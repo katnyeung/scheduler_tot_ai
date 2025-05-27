@@ -37,8 +37,12 @@ public class UserController {
             // Call the LLMService to generate a Tree of Thought
             String generatedTotJson = llmService.generateTreeOfThought(prompt);
 
-            // Return the generated tree JSON
-            return ResponseEntity.ok(generatedTotJson);
+            // Save the generated tree JSON using TotService and get the treeId
+            String treeId = totService.saveTreeOfThought(generatedTotJson);
+
+            // Return the treeId and info about saved tree
+            String response = String.format("Generated and saved ToT with treeId: %s", treeId);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error generating ToT: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body("Error generating ToT: " + e.getMessage());
@@ -90,11 +94,12 @@ public class UserController {
         logger.info("Received request to save ToT from JSON");
 
         try {
-            // Use TotService to save the tree from JSON
-            List<TotNode> savedNodes = totService.saveTreeOfThought(treeJson);
+            // Save the generated tree JSON using TotService and get the treeId
+            String treeId = totService.saveTreeOfThought(treeJson);
 
-            // Return success response
-            return ResponseEntity.ok(String.format("Saved %d nodes successfully", savedNodes.size()));
+            // Return the treeId and info about saved tree
+            String response = String.format("Generated and saved ToT with treeId: %s", treeId);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error saving ToT: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body("Error saving ToT: " + e.getMessage());
