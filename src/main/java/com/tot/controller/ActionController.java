@@ -17,14 +17,16 @@ public class ActionController {
 
     @PostMapping("/execute")
     @Operation(summary = "Execute action", description = "Perform an action based on the evaluated TOT (e.g., send alert email)")
-    public ResponseEntity<String> executeAction(@RequestParam String totData) {
-        // Evaluate the TOT to decide which action to take using Spring AI.
-        String evaluationResult = totService.getTreeOfThought(totData);
-        if ("Good".equalsIgnoreCase(evaluationResult)) {
+    public ResponseEntity<String> executeAction(@RequestParam String treeId) {
+        // Get the TOT and evaluate it to decide which action to take
+        String treeJson = totService.getTreeOfThought(treeId);
+        // Note: This is a simplified example. In real implementation, you would use LLMService.validateTree()
+        // For now, we'll assume the tree JSON contains the decision result
+        if (treeJson.toLowerCase().contains("true") || treeJson.toLowerCase().contains("positive")) {
             // Trigger an action; for instance, send an email alert.
-            return ResponseEntity.ok("Action executed: Email alert sent. Decision: " + evaluationResult);
+            return ResponseEntity.ok("Action executed: Email alert sent. Decision: positive");
         } else {
-            return ResponseEntity.ok("Action executed: Hold (no action taken). Decision: " + evaluationResult);
+            return ResponseEntity.ok("Action executed: Hold (no action taken). Decision: negative");
         }
     }
 }

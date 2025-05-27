@@ -101,8 +101,8 @@ public class ScheduleService {
             // 4. Log the tree evaluation and save to repository
             logService.logTreeEvaluation(treeId, treeJson, validationResult);
 
-            // 5. Execute action if tree is valid
-            if ("VALID".equals(validationResult)) {
+            // 5. Execute action if tree evaluation is true
+            if ("true".equals(validationResult)) {
                 // Create context for action execution
                 ObjectNode context = objectMapper.createObjectNode();
                 context.put("treeId", treeId);
@@ -110,7 +110,7 @@ public class ScheduleService {
                 context.put("validationResult", validationResult);
 
                 // Execute the action
-                logger.info("Executing action for schedule {}", scheduleId);
+                logger.info("Executing action for schedule {} (TOT result: true)", scheduleId);
                 Action action = schedule.getAction();
                 if (action != null) {
                     actionService.executeAction(action, context);
@@ -121,11 +121,11 @@ public class ScheduleService {
                 // Update schedule status
                 updateScheduleStatus(scheduleId, "COMPLETED");
             } else {
-                // Log validation failure and save to repository
-                logService.logValidationFailure(treeId);
+                // Log when TOT evaluation is false (no action needed)
+                logger.info("TOT evaluation returned false for schedule {} - no action taken", scheduleId);
 
                 // Update schedule status
-                updateScheduleStatus(scheduleId, "FAILED");
+                updateScheduleStatus(scheduleId, "COMPLETED");
             }
 
             logger.info("Async processing of schedule {} completed successfully", scheduleId);

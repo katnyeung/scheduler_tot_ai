@@ -130,71 +130,59 @@ public class LLMService {
     }
 
     /**
-     * Validate a Tree of Thought structure by walking through the decision path
+     * Validate a Tree of Thought structure using latest internet data
      * @param treeJson JSON representation of the tree
-     * @return "VALID" if the tree leads to a valid decision path, "INVALID" otherwise
+     * @return "true" if the tree evaluation leads to a positive outcome, "false" otherwise
      */
     public String validateTree(String treeJson) {
-        logger.info("Validating Tree of Thought by traversal");
+        logger.info("Validating Tree of Thought with current data");
 
         try {
             String systemPrompt = """
-                You are an expert evaluator walking through a Tree of Thought (ToT) decision structure.
+                You are evaluating a Tree of Thought decision structure with today's latest information.
                 
-                I'll provide you with a JSON representation of a decision tree. Your task is to:
+                Your task: Run through this Tree of Thought and return true or false based on today's data.
                 
-                1. Identify the root node of the tree
-                2. At each node, carefully read:
-                   - content: what this decision point is about
-                   - criteria: the evaluation criteria for making a decision
+                Instructions:
+                1. Analyze the provided Tree of Thought JSON structure
+                2. Use your access to real-time information and current data to evaluate the decision criteria
+                3. Walk through the decision tree based on current facts and conditions
+                4. Determine if the final outcome represents a positive decision (true) or negative decision (false)
                 
-                3. For each node, evaluate the criteria based on current information and facts
-                   - Use your knowledge and access to information to determine if the criteria are met
-                   - Make a decision: "yes" if criteria are met, "no" if not
+                Response format: Return ONLY "true" or "false" - nothing else.
                 
-                4. Based on your decision, follow the appropriate branch in the "children" object
-                   - If you chose "yes", follow the nodeId mapped to the "yes" key
-                   - If you chose "no", follow the nodeId mapped to the "no" key
-                
-                5. Continue this process, traversing from node to node until you:
-                   - Reach a terminal node (a node with empty children)
-                   - OR encounter an invalid path (reference to non-existent node)
-                   - OR encounter an ambiguous decision (unclear criteria)
-                
-                6. Document your path through the tree, showing:
-                   - Each node you visited
-                   - The decision you made at each node
-                   - The reasoning behind each decision
-                
-                7. Final verdict:
-                   - If you reached a terminal node through valid decisions: respond with "VALID"
-                   - If you encountered any issues (invalid references, ambiguous criteria, circular paths, etc.): respond with "INVALID"
-                
-                Your evaluation should be based on factual information and sound reasoning.
+                Use current market data, news, trends, and any other relevant real-time information to make your determination.
             """;
 
-            String userPrompt = "Tree of Thought to evaluate by traversal:\n" + treeJson;
+            String userPrompt = "Run through this TOT and return true or false for today's data:\n" + treeJson;
 
-            logger.debug("Sending traversal validation request to Perplexity");
+            logger.debug("Sending validation request to Perplexity with current data");
             String response = perplexityService.generateCompletionWithSystem(systemPrompt, userPrompt);
 
-            // Check if the response contains the validation result
-            String lowercaseResponse = response.toLowerCase();
-
-            // Look for the final verdict
-            if (lowercaseResponse.contains("verdict: valid") ||
-                    lowercaseResponse.contains("final verdict: valid") ||
-                    (lowercaseResponse.contains("valid") && !lowercaseResponse.contains("invalid"))) {
-                logger.info("Tree validated as VALID after traversal");
-                return "VALID";
+            // Clean and normalize response
+            String cleanResponse = response.toLowerCase().trim();
+            
+            // Look for true/false in the response
+            if (cleanResponse.contains("true") && !cleanResponse.contains("false")) {
+                logger.info("Tree validation result: true");
+                return "true";
+            } else if (cleanResponse.contains("false") && !cleanResponse.contains("true")) {
+                logger.info("Tree validation result: false");
+                return "false";
+            } else if (cleanResponse.equals("true")) {
+                logger.info("Tree validation result: true");
+                return "true";
+            } else if (cleanResponse.equals("false")) {
+                logger.info("Tree validation result: false");
+                return "false";
             } else {
-                logger.info("Tree validated as INVALID after traversal");
-                return "INVALID";
+                logger.warn("Ambiguous response from LLM: {}. Defaulting to false", response);
+                return "false";
             }
         } catch (Exception e) {
-            logger.error("Error traversing tree: {}", e.getMessage(), e);
-            // Don't crash the application, just return INVALID on errors
-            return "INVALID";
+            logger.error("Error validating tree: {}", e.getMessage(), e);
+            // Don't crash the application, just return false on errors
+            return "false";
         }
     }
 
