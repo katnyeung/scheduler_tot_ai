@@ -29,7 +29,7 @@ public class LogService {
      * Log a Tree of Thought evaluation including the tree content and validation result
      * @param treeId ID of the evaluated tree
      * @param treeJson JSON representation of the tree
-     * @param validationResult Result of tree validation (VALID/INVALID)
+     * @param validationResult Result of tree validation (true/false)
      * @return The created log entry
      */
     @Transactional
@@ -61,7 +61,7 @@ public class LogService {
         // Create and save log entry
         TotLog logEntry = new TotLog();
         logEntry.setTreeId(treeId);
-        logEntry.setValidationResult("INVALID");
+        logEntry.setValidationResult("false");
 
         return totLogRepository.save(logEntry);
     }
@@ -87,12 +87,12 @@ public class LogService {
 
     /**
      * Get validation statistics
-     * @return Object with counts of valid and invalid results
+     * @return Object with counts of true and false results
      */
     public ValidateStats getValidationStats() {
         ValidateStats stats = new ValidateStats();
-        stats.setValidCount(totLogRepository.countByValidationResult("VALID"));
-        stats.setInvalidCount(totLogRepository.countByValidationResult("INVALID"));
+        stats.setValidCount(totLogRepository.countByValidationResult("true"));
+        stats.setInvalidCount(totLogRepository.countByValidationResult("false"));
         stats.setTotalCount(totLogRepository.count());
         return stats;
     }
