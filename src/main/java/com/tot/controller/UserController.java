@@ -56,7 +56,7 @@ public class UserController {
             // Add metadata (basic analysis of the generated tree)
             response.setNodeCount(countNodes(generatedTotJson));
             response.setDepth(calculateDepth(generatedTotJson));
-            
+
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error generating ToT: {}", e.getMessage(), e);

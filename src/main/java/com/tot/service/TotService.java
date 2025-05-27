@@ -83,7 +83,7 @@ public class TotService {
      * @return List of saved nodes
      */
     @Transactional
-    public List<TotNode> saveTreeOfThought(String treeJson) {
+    public String saveTreeOfThought(String treeJson) {
         logger.info("Saving Tree of Thought from JSON");
 
         try {
@@ -112,15 +112,24 @@ public class TotService {
                 node.setChildren(children);
 
                 // Save node to repository
-                savedNodes.add(totNodeRepository.save(node));
-                logger.debug("Saved node: {}", node.getNodeId());
+                TotNode savedNode = totNodeRepository.save(node);
+                savedNodes.add(savedNode);
+                logger.debug("Saved node: nodeId={}, treeId={}", savedNode.getNodeId(), savedNode.getTreeId());
             }
 
             logger.info("Saved {} nodes for Tree of Thought", savedNodes.size());
-            return savedNodes;
+
+            if (!savedNodes.isEmpty()) {
+                String treeId = savedNodes.get(0).getTreeId();
+                logger.info("Returning treeId: {}", treeId);
+                return treeId;
+            } else {
+                logger.warn("No nodes were saved, returning null treeId");
+                return null;
+            }
 
         } catch (Exception e) {
-            logger.error("Error saving tree from JSON: {}", e.getMessage());
+            logger.error("Error saving tree from JSON: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to save Tree of Thought from JSON", e);
         }
     }

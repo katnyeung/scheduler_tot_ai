@@ -26,7 +26,7 @@ public class Scheduler {
      * Scheduled method that runs based on the configured cron expression
      * Default is every 5 minutes
      */
-    @Scheduled(cron = "${tot.scheduler.cron:0 */5 * * * *}")
+    //@Scheduled(cron = "${tot.scheduler.cron:0 */5 * * * *}")
     public void trigger() {
         logger.info("Scheduler triggered at {}", LocalDateTime.now());
 
