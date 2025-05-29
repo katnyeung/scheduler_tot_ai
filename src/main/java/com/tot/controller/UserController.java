@@ -12,6 +12,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.HashSet;
+import java.util.stream.Collectors;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/api/user")
@@ -21,11 +27,13 @@ public class UserController {
 
     private final TotService totService;
     private final LLMService llmService;
+    private final ObjectMapper objectMapper; // Added ObjectMapper
 
     @Autowired
     public UserController(TotService totService, LLMService llmService) {
         this.totService = totService;
         this.llmService = llmService;
+        this.objectMapper = new ObjectMapper(); // Initialize ObjectMapper
     }
 
     @PostMapping("/generate")
@@ -58,11 +66,15 @@ public class UserController {
             // Call the LLMService to refine the existing Tree of Thought
             String refinedTotJson = llmService.refineTreeOfThought(treeJson);
 
-            // Return the refined tree JSON
-            return ResponseEntity.ok(refinedTotJson);
+            // Save the refined tree JSON using TotService and get the treeId
+            String treeId = totService.saveTreeOfThought(refinedTotJson);
+
+            // Return the treeId and info about saved tree
+            String response = String.format("Successfully refined and saved ToT with treeId: %s", treeId);
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
-            logger.error("Error refining ToT: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().body("Error refining ToT: " + e.getMessage());
+            logger.error("Error refining and saving ToT: {}", e.getMessage(), e); // Updated log message
+            return ResponseEntity.internalServerError().body("Error refining and saving ToT: " + e.getMessage()); // Updated error response
         }
     }
 
@@ -78,13 +90,106 @@ public class UserController {
             // Validate the tree structure
             String validationResult = llmService.validateTree(treeJson);
 
-            // Create a response with both the tree JSON and validation result
+            // Deserialize JSON to List of Maps
+            List<Map<String, Object>> nodes;
+            try {
+                nodes = objectMapper.readValue(treeJson, new TypeReference<List<Map<String, Object>>>() {});
+            } catch (Exception e) {
+                logger.error("Error deserializing tree JSON: {}", e.getMessage(), e);
+                return ResponseEntity.internalServerError().body("Error deserializing tree JSON: " + e.getMessage());
+            }
+
+            // Build the preview string
+            String previewString = buildPreviewString(nodes, treeId);
+
+            // Create a response with the preview string and validation result
             return ResponseEntity.ok()
                     .header("X-ToT-Validation", validationResult)
-                    .body(treeJson);
+                    .body(previewString);
         } catch (Exception e) {
             logger.error("Error previewing ToT: {}", e.getMessage(), e);
             return ResponseEntity.internalServerError().body("Error previewing ToT: " + e.getMessage());
+        }
+    }
+
+    private String buildPreviewString(List<Map<String, Object>> nodes, String treeId) {
+        StringBuilder sb = new StringBuilder();
+        Set<String> childNodeIds = new HashSet<>();
+
+        // Filter nodes by the current treeId and collect all child IDs
+        List<Map<String, Object>> currentTreeNodes = nodes.stream()
+                .filter(node -> treeId.equals(node.get("treeId")))
+                .collect(Collectors.toList());
+
+        for (Map<String, Object> node : currentTreeNodes) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> children = (Map<String, String>) node.get("children");
+            if (children != null) {
+                childNodeIds.addAll(children.values());
+            }
+        }
+
+        // Find root nodes (nodes in the current tree that are not children of any other node in this tree)
+        List<Map<String, Object>> rootNodes = currentTreeNodes.stream()
+                .filter(node -> !childNodeIds.contains(node.get("nodeId")))
+                .collect(Collectors.toList());
+
+        if (rootNodes.isEmpty() && !currentTreeNodes.isEmpty()) {
+            // Fallback: if no explicit root found (e.g. circular dependencies or all nodes are children),
+            // pick the first node as a pseudo-root to allow some output.
+            // This might indicate a malformed tree for the given treeId.
+             logger.warn("No root nodes found for treeId {}. Attempting to display from the first node.", treeId);
+             if (!currentTreeNodes.isEmpty()) {
+                 rootNodes.add(currentTreeNodes.get(0));
+             }
+        }
+
+
+        for (Map<String, Object> rootNode : rootNodes) {
+            buildNodeStringRecursive(rootNode, currentTreeNodes, sb, 0);
+        }
+
+        return sb.toString();
+    }
+
+    private void buildNodeStringRecursive(Map<String, Object> currentNode, List<Map<String, Object>> allNodesForTree, StringBuilder sb, int depth) {
+        // Indentation
+        for (int i = 0; i < depth; i++) {
+            sb.append("  "); // 2 spaces per depth level
+        }
+
+        String nodeId = (String) currentNode.get("nodeId");
+        String content = (String) currentNode.get("content");
+        sb.append(nodeId).append(": ").append(content).append("\n");
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> children = (Map<String, String>) currentNode.get("children");
+        if (children != null && !children.isEmpty()) {
+            for (Map.Entry<String, String> entry : children.entrySet()) {
+                String childKey = entry.getKey();
+                String childNodeId = entry.getValue();
+
+                // Indentation for child branch type
+                for (int i = 0; i < depth + 1; i++) {
+                    sb.append("  ");
+                }
+                sb.append(childKey).append(" ->\n"); // Indicate the branch
+
+                Map<String, Object> childNode = allNodesForTree.stream()
+                        .filter(node -> childNodeId.equals(node.get("nodeId")))
+                        .findFirst()
+                        .orElse(null);
+
+                if (childNode != null) {
+                    buildNodeStringRecursive(childNode, allNodesForTree, sb, depth + 2); // Increment depth further for the actual child node
+                } else {
+                    // Indentation for missing child
+                    for (int i = 0; i < depth + 2; i++) {
+                        sb.append("  ");
+                    }
+                    sb.append(childNodeId).append(": [Node not found in provided list for this treeId]\n");
+                }
+            }
         }
     }
 
