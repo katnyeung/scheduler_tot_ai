@@ -46,4 +46,11 @@ public class LogController {
         LogService.ValidateStats stats = logService.getValidationStats();
         return ResponseEntity.ok(stats);
     }
+
+    @GetMapping("/criteria/{treeId}")
+    @Operation(summary = "Get validation criteria", description = "Retrieve detailed validation criteria for analysis and refinement")
+    public ResponseEntity<List<TotLog>> getValidationCriteria(@PathVariable String treeId) {
+        List<TotLog> logs = logService.getRecentLogsForTree(treeId);
+        return ResponseEntity.ok(logs);
+    }
 }

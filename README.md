@@ -1,18 +1,15 @@
-# Experimental New Era of Programming
+# Tree of Thought Scheduling System
 
-Welcome to our experimental project—an exploration of the future of programming where advanced AI reasoning meets persistent vector memory. This repository demonstrates how to rethink traditional decision-making with a novel Tree of Thought (ToT) approach, integrating Spring AI, vector databases, and autonomous scheduling.
-
----
+A Spring Boot application that implements autonomous task execution using Tree of Thought (ToT) reasoning with AI integration.
 
 ## Overview
 
-In this project, we explore:
-- **Scheduling**: Trigger tasks at specific times or events.
-- **Tree of Thought (ToT)**: A hierarchical decision-making framework for reasoning through complex tasks.
-- **Actions**: Execute tasks based on ToT decisions.
-- **Refinement**: Continuously improve the ToT based on outcomes and feedback.
-
----
+This system provides:
+- **Scheduling**: Automated task execution at specified intervals
+- **Tree of Thought (ToT)**: Hierarchical decision-making framework for complex task reasoning
+- **AI Integration**: LLM validation through Perplexity API
+- **Action Execution**: Task execution based on validated ToT decisions
+- **Continuous Learning**: System refinement based on execution outcomes
 
 ## Architecture
 
@@ -20,104 +17,55 @@ The following diagram illustrates the relationship between the Scheduler, Tree o
 
 ![Untitled diagram-2025-02-17-002123](https://github.com/user-attachments/assets/4e75e6d1-a5c2-4d6a-ac0c-456c4482eb0f)
 
-### Sequence Diagram
+### Core Components
 
-sequenceDiagram
-participant Scheduler
-participant ScheduleService
-participant TotService
-participant LLMService
-participant LogService
-participant ActionService
+- **Scheduler**: Executes scheduled tasks at 5-minute intervals via cron expression
+- **ScheduleService**: Delegates schedule processing to ActionService
+- **ActionService**: Core service containing ToT processing logic and action execution
+- **TotService**: Handles Tree of Thought node management and JSON serialization
+- **LLMService**: Validates ToT decisions using external AI services
+- **LogService**: Records execution results, validation outcomes, and system events for analysis
 
-    Scheduler->>ScheduleService: trigger(cronExpression)
-    ScheduleService->>ScheduleService: findDueSchedules()
-    
-    loop For each due schedule
-        ScheduleService->>TotService: getTreeOfThought(treeId)
-        TotService-->>ScheduleService: treeJson
-        
-        ScheduleService->>LLMService: validateTree(treeJson)
-        LLMService-->>ScheduleService: validationResult (VALID/INVALID)
-        
-        ScheduleService->>LogService: logTreeEvaluation(treeId, treeJson, validationResult)
-        
-        alt validationResult == "VALID"
-            ScheduleService->>ActionService: executeAction(action, context)
-        else validationResult == "INVALID"
-            ScheduleService->>LogService: logValidationFailure(treeId)
-        end
-        
-        ScheduleService->>ScheduleService: updateScheduleStatus(scheduleId, status)
-    end
+### Data Flow
 
-### Workflow
+1. Scheduler triggers at configured intervals
+2. ScheduleService delegates processing to ActionService
+3. ActionService identifies due schedules
+4. TotService retrieves tree structure from H2 database
+5. LLMService validates tree logic via Perplexity API
+6. LogService records tree evaluation and validation results
+7. ActionService executes core logic for validated decisions
+8. LogService captures execution outcomes and results
 
-1. **Scheduler**:
-   - Triggers actions at predefined intervals or events.
-2. **Action**:
-   - Fetches the ToT from the vector database.
-   - Evaluates the current state using an LLM.
-   - Executes tasks based on ToT decisions.
-3. **Refinement**:
-   - Updates the ToT based on feedback from executed actions.
-   - Writes refined nodes back to the vector database for future use.
+## Technical Specifications
 
----
+### Database
+- **H2 In-Memory Database**: Stores ToT nodes, schedules, actions, and execution logs
+- **Log Storage**: TotLog entities capture execution results for refinement analysis
+- **Console Access**: Available at `http://localhost:8080/h2-console`
+- **Connection**: `jdbc:h2:mem:testdb` (username: `sa`, no password)
 
-## Use Case Example: Autonomous Stock Analyst
+### API Documentation
+- **Swagger UI**: Available at `http://localhost:8080/swagger-ui.html`
+- **Port**: Application runs on port 8080
 
-Imagine a system that monitors the NVDA stock price throughout the trading day:
+### Build and Deployment
+```bash
+# Build the project
+mvn clean compile
 
-1. **ToT Creation**:  
-   - Analyze critical points to determine the best price to buy NVDA stock.
-   - Create a Tree of Thought (ToT) based on multiple criteria, such as price thresholds, market trends, and volatility.
-   - Nodes in the ToT represent decisions:
-     - **Left Branch**: Leads to "Good," indicating it's a good time to buy.
-     - **Right Branch**: Leads to "Hold," meaning conditions are not ideal, and monitoring should continue.
+# Run the application
+mvn spring-boot:run
 
-2. **Scheduling**:  
-   - Schedule the action to trigger at market open (e.g., 9:30 AM EST).
-   - Repeat every 15 minutes during trading hours to evaluate the ToT.
+# Package the application
+mvn clean package
 
-3. **Action**:  
-   - Fetch the ToT from the vector database and evaluate it using the LLM.
-   - If the ToT returns "Good," send an email alert recommending a buy action.
-   - If the ToT returns "Hold," do nothing and wait for the next scheduled evaluation.
+# Run tests
+mvn test
+```
 
-4. **Refinement**:  
-   - Post-action, analyze the outcome (e.g., actual stock price movements and market conditions).
-   - Refine the ToT:
-     - Update thresholds or criteria for "Good" and "Hold" decisions.
-     - Add new nodes if additional conditions or factors are identified.
-   - Save the updated ToT back into the vector database for future evaluations.
-
----
-
-## Sample Node Representation (Stored in the Vector DB)
-
-{
-"content": "Check if NVDA price is below today's low",
-"metadata": {
-"nodeId": "node_001",
-"type": "decision",
-"treeId": "nvda_alert_tree",
-"children": {
-"yes": "node_002",
-"no": "node_003"
-},
-"prompt": "Is the current NVDA price lower than the recorded day's low?"
-}
-}
-
-text
-
----
-
-## Why This Matters
-
-This project embodies a truly experimental approach to programming:
-- **Flexibility**: By decoupling decision logic (ToT) from execution, you can easily modify or extend the system in real time.
-- **Context Awareness**: With vector storage for node semantics, the AI can consider detailed context in its reasoning.
-- **Self-Improvement**: The action/refinement cycle ensures the system learns from each decision, potentially leading to smarter automation over time.
+### Configuration
+- Perplexity API integration for LLM services
+- Async processing enabled for concurrent task execution
+- Cron-based scheduling with configurable intervals
 

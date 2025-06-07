@@ -25,6 +25,9 @@ public class TotLog {
     private String validationResult;
 
     @Column(columnDefinition = "TEXT")
+    private String validationCriteria;
+
+    @Column(columnDefinition = "TEXT")
     private String treeJson;
 
     @Column(columnDefinition = "TIMESTAMP")

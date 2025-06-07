@@ -59,22 +59,25 @@ public class UserController {
 
     @PostMapping("/refine")
     @Operation(summary = "Refine ToT", description = "Refine an existing Tree of Thought with latest data and details")
-    public ResponseEntity<String> refineTot(@RequestBody String treeJson) {
-        logger.info("Received request to refine ToT");
+    public ResponseEntity<String> refineTot(@RequestParam String treeId, @RequestParam String prompt) {
+        logger.info("Received request to refine ToT with treeId: {} and prompt: {}", treeId, prompt);
 
         try {
-            // Call the LLMService to refine the existing Tree of Thought
-            String refinedTotJson = llmService.refineTreeOfThought(treeJson);
+            // Fetch the existing tree JSON by treeId
+            String existingTreeJson = totService.getTreeOfThought(treeId);
+
+            // Call the LLMService to refine the existing Tree of Thought with the new prompt
+            String refinedTotJson = llmService.refineTreeOfThought(existingTreeJson, prompt);
 
             // Save the refined tree JSON using TotService and get the treeId
-            String treeId = totService.saveTreeOfThought(refinedTotJson);
+            String savedTreeId = totService.saveTreeOfThought(refinedTotJson);
 
             // Return the treeId and info about saved tree
-            String response = String.format("Successfully refined and saved ToT with treeId: %s", treeId);
+            String response = String.format("Successfully refined and saved ToT with treeId: %s", savedTreeId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            logger.error("Error refining and saving ToT: {}", e.getMessage(), e); // Updated log message
-            return ResponseEntity.internalServerError().body("Error refining and saving ToT: " + e.getMessage()); // Updated error response
+            logger.error("Error refining and saving ToT: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Error refining and saving ToT: " + e.getMessage());
         }
     }
 
@@ -88,7 +91,7 @@ public class UserController {
             String treeJson = totService.getTreeOfThought(treeId);
 
             // Validate the tree structure
-            String validationResult = llmService.validateTree(treeJson);
+            //String validationResult = llmService.validateTree(treeJson);
 
             // Deserialize JSON to List of Maps
             List<Map<String, Object>> nodes;
@@ -104,7 +107,7 @@ public class UserController {
 
             // Create a response with the preview string and validation result
             return ResponseEntity.ok()
-                    .header("X-ToT-Validation", validationResult)
+                    .header("X-ToT-Validation", "true")
                     .body(previewString);
         } catch (Exception e) {
             logger.error("Error previewing ToT: {}", e.getMessage(), e);
@@ -195,15 +198,27 @@ public class UserController {
 
     @PostMapping("/save")
     @Operation(summary = "Save ToT", description = "Save the Tree of Thought structure into the database")
-    public ResponseEntity<String> saveTot(@RequestBody String treeJson) {
-        logger.info("Received request to save ToT from JSON");
+    public ResponseEntity<String> saveTot(@RequestParam String treeId, @RequestBody String treeJson) {
+        logger.info("Received request to save ToT for treeId: {}", treeId);
 
         try {
-            // Save the generated tree JSON using TotService and get the treeId
-            String treeId = totService.saveTreeOfThought(treeJson);
+            // Parse the JSON into a list of node objects
+            List<Map<String, Object>> nodeList = objectMapper.readValue(
+                    treeJson, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
+
+            // Update each node's treeId to the provided treeId
+            for (Map<String, Object> nodeMap : nodeList) {
+                nodeMap.put("treeId", treeId);
+            }
+
+            // Convert updated nodeList back to JSON string
+            String updatedTreeJson = objectMapper.writeValueAsString(nodeList);
+
+            // Save the updated tree JSON using TotService and get the treeId
+            String savedTreeId = totService.saveTreeOfThought(updatedTreeJson);
 
             // Return the treeId and info about saved tree
-            String response = String.format("Generated and saved ToT with treeId: %s", treeId);
+            String response = String.format("Updated and saved ToT with treeId: %s", savedTreeId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
             logger.error("Error saving ToT: {}", e.getMessage(), e);
