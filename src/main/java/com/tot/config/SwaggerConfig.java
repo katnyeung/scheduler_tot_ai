@@ -2,6 +2,7 @@ package com.tot.config;
 
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.info.Contact;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -9,11 +10,13 @@ import org.springframework.context.annotation.Configuration;
 public class SwaggerConfig {
 
     @Bean
-    public OpenAPI experimentalOpenAPI() {
+    public OpenAPI totOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Experimental New Era of Programming API")
-                        .description("API endpoints for scheduling, managing TOT, executing actions, and refining decisions using Spring AI")
-                        .version("1.0.0"));
+                        .title("Tree of Thought Scheduling System API")
+                        .description("API endpoints for Tree of Thought processing, scheduling, action execution, and logging")
+                        .version("1.0.0")
+                        .contact(new Contact()
+                                .name("ToT System")));
     }
 }

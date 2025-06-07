@@ -1,7 +1,7 @@
 package com.tot.scheduler;
 
 import com.tot.service.ScheduleService;
-import com.tot.controller.ActionController;
+import com.tot.service.ActionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,12 +17,12 @@ import java.time.LocalDateTime;
 public class Scheduler {
     private static final Logger logger = LoggerFactory.getLogger(Scheduler.class);
     private final ScheduleService scheduleService;
-    private final ActionController actionController;
+    private final ActionService actionService;
 
     @Autowired
-    public Scheduler(ScheduleService scheduleService, ActionController actionController) {
+    public Scheduler(ScheduleService scheduleService, ActionService actionService) {
         this.scheduleService = scheduleService;
-        this.actionController = actionController;
+        this.actionService = actionService;
     }
 
     /**
@@ -43,7 +43,7 @@ public class Scheduler {
     }
     
     /**
-     * Execute action for a specific tree ID using ActionController
+     * Execute action for a specific tree ID using ActionService
      * This provides an alternative execution path that can be used 
      * independently of the scheduled workflow
      * @param treeId The tree ID to execute action for
@@ -52,12 +52,11 @@ public class Scheduler {
         logger.info("Scheduler executing action for treeId {} at {}", treeId, LocalDateTime.now());
         
         try {
-            // Use ActionController to execute the action
-            var response = actionController.executeAction(treeId);
-            logger.info("ActionController execution completed for treeId {}: {}", 
-                       treeId, response.getBody());
+            // Use ActionService directly to execute the action
+            String result = actionService.executeActionForTree(treeId);
+            logger.info("ActionService execution completed for treeId {}: {}", treeId, result);
         } catch (Exception e) {
-            logger.error("Error executing action via ActionController for treeId {}: {}", 
+            logger.error("Error executing action via ActionService for treeId {}: {}", 
                         treeId, e.getMessage(), e);
         }
     }

@@ -34,17 +34,35 @@ public class LogService {
      */
     @Transactional
     public TotLog logTreeEvaluation(String treeId, String treeJson, String validationResult) {
-        logger.info("Tree Evaluation - ID: {}, Result: {}, Time: {}",
-                treeId, validationResult, LocalDateTime.now());
+        return logTreeEvaluation(treeId, treeJson, validationResult, null);
+    }
+
+    /**
+     * Log a Tree of Thought evaluation with detailed validation criteria
+     * @param treeId ID of the evaluated tree
+     * @param treeJson JSON representation of the tree
+     * @param validationResult Result of tree validation (true/false)
+     * @param validationCriteria Detailed criteria and analysis from validation
+     * @return The created log entry
+     */
+    @Transactional
+    public TotLog logTreeEvaluation(String treeId, String treeJson, String validationResult, String validationCriteria) {
+        logger.info("Tree Evaluation - ID: {}, Result: {}, Time: {}, Has Criteria: {}",
+                treeId, validationResult, LocalDateTime.now(), validationCriteria != null);
 
         // Log the full tree content at debug level to avoid cluttering logs
         logger.debug("Tree Content for {}: {}", treeId, treeJson);
+        
+        if (validationCriteria != null) {
+            logger.debug("Validation Criteria for {}: {}", treeId, validationCriteria);
+        }
 
         // Create and save log entry
         TotLog logEntry = new TotLog();
         logEntry.setTreeId(treeId);
         logEntry.setTreeJson(treeJson);
         logEntry.setValidationResult(validationResult);
+        logEntry.setValidationCriteria(validationCriteria);
 
         return totLogRepository.save(logEntry);
     }

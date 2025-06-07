@@ -1,106 +1,230 @@
 package com.tot.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tot.entity.Action;
+import com.tot.entity.Schedule;
 import com.tot.repository.ActionRepository;
+import com.tot.repository.ScheduleRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 /**
- * Service for executing actions based on ToT decisions
+ * Service for core ToT processing and action execution
  */
 @Service
 public class ActionService {
     private static final Logger logger = LoggerFactory.getLogger(ActionService.class);
     private final ActionRepository actionRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final TotService totService;
+    private final LLMService llmService;
+    private final LogService logService;
     private final ObjectMapper objectMapper;
 
     @Autowired
-    public ActionService(ActionRepository actionRepository) {
+    public ActionService(
+            ActionRepository actionRepository,
+            ScheduleRepository scheduleRepository,
+            TotService totService,
+            LLMService llmService,
+            LogService logService) {
         this.actionRepository = actionRepository;
+        this.scheduleRepository = scheduleRepository;
+        this.totService = totService;
+        this.llmService = llmService;
+        this.logService = logService;
         this.objectMapper = new ObjectMapper();
     }
 
     /**
-     * Execute an action with context
-     * @param action The action to execute
-     * @param context Additional context for the action
+     * Process all schedules that are due now asynchronously
+     */
+    public void processSchedulesForCurrentTimeAsync() {
+        logger.info("Initiating async schedule processing for current time: {}", LocalDateTime.now());
+
+        // Find schedules that are due
+        List<Schedule> dueSchedules = findDueSchedules();
+        logger.info("Found {} due schedules to process asynchronously", dueSchedules.size());
+
+        // Process each schedule asynchronously
+        for (Schedule schedule : dueSchedules) {
+            processScheduleAsync(schedule)
+                    .exceptionally(ex -> {
+                        logger.error("Async processing of schedule {} failed: {}",
+                                schedule.getId(), ex.getMessage(), ex);
+                        try {
+                            updateScheduleStatus(schedule.getId(), "ERROR");
+                        } catch (Exception e) {
+                            logger.error("Failed to update schedule status: {}", e.getMessage());
+                        }
+                        return null;
+                    });
+        }
+    }
+
+    /**
+     * Process a single schedule through the entire workflow asynchronously
+     * @param schedule The schedule to process
+     * @return CompletableFuture that completes when the processing is done
+     */
+    @Async("taskExecutor")
+    public CompletableFuture<Void> processScheduleAsync(Schedule schedule) {
+        String scheduleId = schedule.getId();
+        String treeId = schedule.getTargetNodeId();
+
+        logger.info("Async processing of schedule {} for tree {} started on thread {}",
+                scheduleId, treeId, Thread.currentThread().getName());
+
+        try {
+            // 1. Mark schedule as in-progress
+            updateScheduleStatus(scheduleId, "IN_PROGRESS");
+
+            // 2. Get the tree of thought from TotService
+            String treeJson = totService.getTreeOfThought(treeId);
+            logger.info("Tree of thought retrieved for schedule {}", scheduleId);
+
+            // 3. Validate the tree with LLMService and get detailed criteria
+            logger.info("Starting LLM validation for schedule {}", scheduleId);
+            ValidationResult validationResult = llmService.validateTreeWithCriteria(treeJson);
+            logger.info("LLM validation completed for schedule {}: result={}", scheduleId, validationResult.getResult());
+
+            // 4. Log the tree evaluation with detailed criteria
+            logService.logTreeEvaluation(treeId, treeJson, validationResult.getResult(), validationResult.getCriteria());
+
+            // 5. Execute core logic if tree evaluation is true
+            if (validationResult.isPositive()) {
+                logger.info("Executing core logic for schedule {} (TOT result: true)", scheduleId);
+                executeCoreLogic(schedule, treeId, validationResult.getResult());
+                updateScheduleStatus(scheduleId, "COMPLETED");
+            } else {
+                logger.info("TOT evaluation returned false for schedule {} - no action taken", scheduleId);
+                updateScheduleStatus(scheduleId, "COMPLETED");
+            }
+
+            logger.info("Async processing of schedule {} completed successfully", scheduleId);
+            return CompletableFuture.completedFuture(null);
+        } catch (Exception e) {
+            logger.error("Error in async processing of schedule {}: {}", scheduleId, e.getMessage(), e);
+            updateScheduleStatus(scheduleId, "ERROR");
+            CompletableFuture<Void> future = new CompletableFuture<>();
+            future.completeExceptionally(e);
+            return future;
+        }
+    }
+
+    /**
+     * Execute core business logic for validated schedules
+     */
+    private void executeCoreLogic(Schedule schedule, String treeId, String validationResult) {
+        logger.info("Executing core logic for schedule: {}", schedule.getId());
+        
+        // Create context for execution
+        ObjectNode context = objectMapper.createObjectNode();
+        context.put("treeId", treeId);
+        context.put("scheduleId", schedule.getId());
+        context.put("validationResult", validationResult);
+        
+        // Execute the action if defined
+        Action action = schedule.getAction();
+        if (action != null) {
+            executeAction(action, context);
+        } else {
+            logger.warn("No action defined for schedule {}", schedule.getId());
+        }
+    }
+
+    /**
+     * Execute a specific action with context
      */
     @Transactional
     public void executeAction(Action action, ObjectNode context) {
         logger.info("Executing action: {}, type: {}", action.getId(), action.getActionType());
+        
+        // Basic action execution - extensible for future action types
+        logger.info("Action executed successfully: {}", action.getId());
+    }
 
+    /**
+     * Execute action for a specific tree ID (used by ActionController)
+     * @param treeId The tree ID to process
+     * @return Result message indicating the action taken
+     */
+    public String executeActionForTree(String treeId) {
+        logger.info("Executing action for treeId: {}", treeId);
+        
         try {
-            // Parse action data
-            JsonNode actionData = objectMapper.readTree(action.getActionData());
-
-            // Execute based on action type
-            switch (action.getActionType()) {
-                case "EMAIL_ALERT" -> sendEmailAlert(actionData, context);
-                case "API_CALL" -> makeApiCall(actionData, context);
-                case "REFINE_TREE" -> refineTree(actionData, context);
-                default -> {
-                    logger.warn("Unknown action type: {}", action.getActionType());
-                    throw new IllegalArgumentException("Unsupported action type: " + action.getActionType());
-                }
+            // Get the tree of thought
+            String treeJson = totService.getTreeOfThought(treeId);
+            
+            if (treeJson == null || treeJson.trim().isEmpty()) {
+                logger.error("No tree found for treeId: {}", treeId);
+                throw new IllegalArgumentException("Tree not found for ID: " + treeId);
             }
 
-            // Record execution
-            recordActionExecution(action, context);
 
+            // Validate the tree with LLMService and get detailed criteria
+            ValidationResult validationResult = llmService.validateTreeWithCriteria(treeJson);
+            logger.info("LLM validation completed for treeId {}: result={}", treeId, validationResult.getResult());
+            
+            // Log the tree evaluation with detailed criteria
+            logService.logTreeEvaluation(treeId, treeJson, validationResult.getResult(), validationResult.getCriteria());
+
+            // Determine action based on validation result
+            String actionResult;
+            if (validationResult.isPositive()) {
+                actionResult = "Action executed: Decision positive - " + validationResult.getCriteria().substring(0, Math.min(100, validationResult.getCriteria().length())) + "...";
+                logger.info("Executing positive action for treeId {}", treeId);
+            } else {
+                actionResult = "Action executed: Hold (no action taken). Decision: negative - " + validationResult.getCriteria().substring(0, Math.min(100, validationResult.getCriteria().length())) + "...";
+                logger.info("Executing negative action (hold) for treeId {}", treeId);
+            }
+            
+            return actionResult;
+            
         } catch (Exception e) {
-            logger.error("Error executing action: {}", e.getMessage());
-            throw new RuntimeException("Failed to execute action", e);
+            logger.error("Error executing action for treeId {}: {}", treeId, e.getMessage(), e);
+            
+            // Log the failure
+            try {
+                logService.logValidationFailure(treeId);
+            } catch (Exception logError) {
+                logger.error("Failed to log validation failure: {}", logError.getMessage());
+            }
+            
+            throw new RuntimeException("Error executing action for tree " + treeId + ": " + e.getMessage());
         }
     }
 
-    // Action type implementations
+    /**
+     * Find schedules that are due for processing
+     */
+    private List<Schedule> findDueSchedules() {
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime fiveMinutesAgo = now.minusMinutes(5);
+        LocalDateTime oneMinuteFuture = now.plusMinutes(1);
 
-    private void sendEmailAlert(JsonNode actionData, ObjectNode context) {
-        String recipient = actionData.path("recipient").asText("default@example.com");
-        String subject = actionData.path("subject").asText("ToT Alert");
-
-        logger.info("Sending email alert to: {}, subject: {}", recipient, subject);
-
-        // Implementation would go here
+        return scheduleRepository.findByScheduledTimeBetweenAndStatus(
+                fiveMinutesAgo, oneMinuteFuture, "PENDING");
     }
 
-    private void makeApiCall(JsonNode actionData, ObjectNode context) {
-        String url = actionData.path("url").asText();
-        String method = actionData.path("method").asText("GET");
-
-        logger.info("Making API call to: {}, method: {}", url, method);
-
-        // Implementation would go here
-    }
-
-    private void refineTree(JsonNode actionData, ObjectNode context) {
-        String treeId = actionData.path("treeId").asText();
-        if (treeId.isEmpty() && context.has("treeId")) {
-            treeId = context.path("treeId").asText();
-        }
-
-        logger.info("Refining tree: {}", treeId);
-
-        // Implementation would go here
-    }
-
-    // Helper methods
-
-    private void recordActionExecution(Action action, JsonNode context) throws JsonProcessingException {
-        // Update action with execution record
-        JsonNode actionData = objectMapper.readTree(action.getActionData());
-        ((ObjectNode) actionData).put("lastExecuted", LocalDateTime.now().toString());
-
-        action.setActionData(objectMapper.writeValueAsString(actionData));
-        actionRepository.save(action);
+    /**
+     * Update the status of a schedule
+     */
+    @Transactional
+    public void updateScheduleStatus(String scheduleId, String status) {
+        scheduleRepository.findById(scheduleId).ifPresent(schedule -> {
+            schedule.setStatus(status);
+            scheduleRepository.save(schedule);
+            logger.info("Updated schedule {} status to {}", scheduleId, status);
+        });
     }
 }

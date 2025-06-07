@@ -85,35 +85,36 @@ public class LLMService {
     }
 
     /**
-     * Refine an existing Tree of Thought with the latest data and details
+     * Refine an existing Tree of Thought with the latest data and details based on a new prompt
      * @param treeJson The JSON representation of the existing tree
+     * @param newPrompt The new prompt requirement to guide refinement
      * @return JSON string representation of the refined tree
      */
-    public String refineTreeOfThought(String treeJson) {
-        logger.info("Refining existing Tree of Thought");
+    public String refineTreeOfThought(String treeJson, String newPrompt) {
+        logger.info("Refining existing Tree of Thought with new prompt");
 
         String systemPrompt = """
-            You are an expert in refining Tree of Thought (ToT) structures in JSON format.
-            
-            You will be given an existing Tree of Thought structure. Your task is to:
-            1. Analyze the existing structure while preserving its core logic
-            2. Enhance node content with more detailed descriptions
-            3. Improve criteria with more specific evaluation metrics
-            4. Add any missing branches or decision paths
-            5. Update with the latest relevant information
-            6. Ensure all node relationships remain valid
-            
-            The structure should be an array of nodes, where each node has:
-            - nodeId: a unique identifier for the node (preserve existing IDs)
-            - treeId: an identifier for the entire tree (preserve existing ID)
-            - content: descriptive content for the node (enhance this)
-            - criteria: evaluation criteria for this node (enhance this)
-            - children: a mapping of branch keys to child nodeIds (expand if needed)
-            
-            Return the complete refined JSON array with all nodes, without any explanations.
-        """;
+        You are an expert in refining Tree of Thought (ToT) structures in JSON format.
+        
+        You will be given an existing Tree of Thought structure and a new prompt requirement. Your task is to:
+        1. Analyze the existing structure while preserving its core logic
+        2. Enhance node content with more detailed descriptions based on the new prompt
+        3. Improve criteria with more specific evaluation metrics
+        4. Add any missing branches or decision paths relevant to the new prompt
+        5. Update with the latest relevant information
+        6. Ensure all node relationships remain valid
+        
+        The structure should be an array of nodes, where each node has:
+        - nodeId: a unique identifier for the node (preserve existing IDs)
+        - treeId: an identifier for the entire tree (preserve existing ID)
+        - content: descriptive content for the node (enhance this)
+        - criteria: evaluation criteria for this node (enhance this)
+        - children: a mapping of branch keys to child nodeIds (expand if needed)
+        
+        Return the complete refined JSON array with all nodes, without any explanations.
+    """;
 
-        String userPrompt = "Here is the existing Tree of Thought to refine:\n" + treeJson;
+        String userPrompt = "Here is the existing Tree of Thought to refine:\n" + treeJson + "\n\nNew prompt requirement:\n" + newPrompt;
 
         try {
             String response = perplexityService.generateCompletionWithSystem(systemPrompt, userPrompt);
@@ -132,57 +133,99 @@ public class LLMService {
     /**
      * Validate a Tree of Thought structure using latest internet data
      * @param treeJson JSON representation of the tree
-     * @return "true" if the tree evaluation leads to a positive outcome, "false" otherwise
+     * @return ValidationResult containing both decision and detailed criteria
      */
-    public String validateTree(String treeJson) {
-        logger.info("Validating Tree of Thought with current data");
+    public ValidationResult validateTreeWithCriteria(String treeJson) {
+        logger.info("Validating Tree of Thought with current data and detailed criteria");
 
         try {
             String systemPrompt = """
                 You are evaluating a Tree of Thought decision structure with today's latest information.
                 
-                Your task: Run through this Tree of Thought and return true or false based on today's data.
+                Your task: Run through this Tree of Thought and provide both a decision and detailed analysis.
                 
                 Instructions:
                 1. Analyze the provided Tree of Thought JSON structure
-                2. Use your access to real-time information and current data to evaluate the decision criteria
+                2. Use your access to real-time information and current data to evaluate each decision criteria
                 3. Walk through the decision tree based on current facts and conditions
-                4. Determine if the final outcome represents a positive decision (true) or negative decision (false)
+                4. Provide detailed reasoning for each evaluation step
+                5. Determine if the final outcome represents a positive decision (true) or negative decision (false)
                 
-                Response format: Return ONLY "true" or "false" - nothing else.
+                Response format: 
+                DECISION: true|false
+                CRITERIA: [Provide detailed analysis of current market conditions, specific data points, financial metrics, news sentiment, and reasoning for each node evaluation. Include specific numbers, percentages, or facts where available. This will be used for future tree refinement and analysis.]
                 
+                For investment decisions, include current stock prices, recent earnings, market trends, analyst opinions, and any relevant news or events.
                 Use current market data, news, trends, and any other relevant real-time information to make your determination.
             """;
 
-            String userPrompt = "Run through this TOT and return true or false for today's data:\n" + treeJson;
+            String userPrompt = "Run through this TOT and provide decision + detailed criteria analysis for today's data:\n" + treeJson;
 
-            logger.debug("Sending validation request to Perplexity with current data");
+            logger.debug("Sending detailed validation request to Perplexity");
             String response = perplexityService.generateCompletionWithSystem(systemPrompt, userPrompt);
 
-            // Clean and normalize response
-            String cleanResponse = response.toLowerCase().trim();
+            // Parse the response to extract decision and criteria
+            return parseValidationResponse(response);
             
-            // Look for true/false in the response
-            if (cleanResponse.contains("true") && !cleanResponse.contains("false")) {
-                logger.info("Tree validation result: true");
-                return "true";
-            } else if (cleanResponse.contains("false") && !cleanResponse.contains("true")) {
-                logger.info("Tree validation result: false");
-                return "false";
-            } else if (cleanResponse.equals("true")) {
-                logger.info("Tree validation result: true");
-                return "true";
-            } else if (cleanResponse.equals("false")) {
-                logger.info("Tree validation result: false");
-                return "false";
-            } else {
-                logger.warn("Ambiguous response from LLM: {}. Defaulting to false", response);
-                return "false";
-            }
         } catch (Exception e) {
-            logger.error("Error validating tree: {}", e.getMessage(), e);
-            // Don't crash the application, just return false on errors
-            return "false";
+            logger.error("Error validating tree with criteria: {}", e.getMessage(), e);
+            return new ValidationResult("false", "Error during validation: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Legacy method for backward compatibility
+     */
+    public String validateTree(String treeJson) {
+        ValidationResult result = validateTreeWithCriteria(treeJson);
+        return result.getResult();
+    }
+
+    /**
+     * Parse the LLM response to extract decision and criteria
+     */
+    private ValidationResult parseValidationResponse(String response) {
+        try {
+            String decision = "false";
+            String criteria = response;
+
+            // Look for DECISION: pattern
+            if (response.contains("DECISION:")) {
+                String[] parts = response.split("DECISION:", 2);
+                if (parts.length > 1) {
+                    String decisionPart = parts[1].trim();
+                    if (decisionPart.toLowerCase().startsWith("true")) {
+                        decision = "true";
+                    } else if (decisionPart.toLowerCase().startsWith("false")) {
+                        decision = "false";
+                    }
+                }
+            }
+
+            // Look for CRITERIA: pattern
+            if (response.contains("CRITERIA:")) {
+                String[] parts = response.split("CRITERIA:", 2);
+                if (parts.length > 1) {
+                    criteria = parts[1].trim();
+                }
+            }
+
+            // Fallback: check for simple true/false in response
+            if (decision.equals("false") && !response.contains("DECISION:")) {
+                String cleanResponse = response.toLowerCase().trim();
+                if (cleanResponse.contains("true") && !cleanResponse.contains("false")) {
+                    decision = "true";
+                } else if (cleanResponse.equals("true")) {
+                    decision = "true";
+                }
+            }
+
+            logger.info("Parsed validation - Decision: {}, Criteria length: {}", decision, criteria.length());
+            return new ValidationResult(decision, criteria);
+            
+        } catch (Exception e) {
+            logger.error("Error parsing validation response: {}", e.getMessage());
+            return new ValidationResult("false", "Error parsing response: " + response);
         }
     }
 
