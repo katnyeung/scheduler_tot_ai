@@ -24,6 +24,9 @@ public class Schedule {
 
     private String status; // e.g., "PENDING", "COMPLETED", "FAILED"
 
+    @Column(columnDefinition = "INTEGER DEFAULT 1")
+    private Integer comparisonDays; // Number of days back to compare for historical analysis
+
     @ManyToOne
     @JoinColumn(name = "action_id")
     private Action action; // Action to perform when scheduled

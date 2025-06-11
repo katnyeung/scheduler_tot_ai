@@ -259,4 +259,21 @@ public class UserController {
             return ResponseEntity.internalServerError().body("Error validating ToT: " + e.getMessage());
         }
     }
+
+    @GetMapping("/getAllTree")
+    @Operation(summary = "Get Tree List", description = "Get all available tree IDs")
+    public ResponseEntity<List<String>> getTreeList() {
+        logger.info("Received request to get all tree IDs");
+
+        try {
+            // Get all tree IDs from the service
+            List<String> treeIds = totService.getAllTreeIds();
+
+            // Return the list of tree IDs
+            return ResponseEntity.ok(treeIds);
+        } catch (Exception e) {
+            logger.error("Error getting tree list: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
 }
