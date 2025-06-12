@@ -28,14 +28,17 @@ The following diagram illustrates the relationship between the Scheduler, Tree o
 
 ### Data Flow
 
-1. Scheduler triggers at configured intervals
-2. ScheduleService delegates processing to ActionService
-3. ActionService identifies due schedules
-4. TotService retrieves tree structure from H2 database
-5. LLMService validates tree logic via Perplexity API
-6. LogService records tree evaluation and validation results
-7. ActionService executes core logic for validated decisions
-8. LogService captures execution outcomes and results
+1. **Scheduler** triggers at configured intervals (every 5 minutes via cron)
+2. **ScheduleService** delegates async processing to ActionService
+3. **ActionService** finds due schedules and processes each asynchronously:
+   - Retrieves ToT tree structure from **TotService** (stored in H2 database as JSON)
+   - Validates tree logic using **LLMService** with historical comparison (1-365 days back)
+   - **LLMService** calls **PerplexityService** (Perplexity API) for AI validation
+   - **LogService** records validation results and criteria in TotLog entities
+   - If validation passes, executes the action logic
+   - **LogService** captures final execution outcomes
+   - Updates schedule status (IN_PROGRESS → COMPLETED/ERROR)
+4. **RefinementService** (future) will analyze logged results for continuous improvement
 
 ## Technical Specifications
 
@@ -68,4 +71,70 @@ mvn test
 - Perplexity API integration for LLM services
 - Async processing enabled for concurrent task execution
 - Cron-based scheduling with configurable intervals
+
+## Future Enhancement: Darwin Gödel Machine Inspired Self-Refinement
+
+Based on research into Darwin Gödel Machine (https://arxiv.org/abs/2505.22954), the system can be enhanced with autonomous self-improvement capabilities using execution logs for ToT refinement.
+
+### Proposed Self-Refinement Mechanisms
+
+#### 1. ToT Archive System
+- **Concept**: Maintain an archive of successful ToT tree configurations
+- **Implementation**: Store high-performing tree structures as templates for generating variations
+- **Data Source**: `TotLog` entries with high validation success and action completion rates
+
+#### 2. Execution-Based Tree Evolution
+- **Performance Analysis**: Analyze patterns in `TotLog.validationResult` and action outcomes
+- **Tree Optimization**: Identify which tree structures consistently produce better results
+- **Criteria Refinement**: Automatically adjust validation criteria based on historical performance
+
+#### 3. Multi-Path Tree Exploration
+- **Parallel Evaluation**: Run multiple ToT variants simultaneously for each schedule
+- **Tournament Selection**: Compare results and favor winning tree architectures
+- **Branching Strategy**: Evolve tree structure based on execution success patterns
+
+#### 4. Context-Aware Tree Selection
+- **Pattern Recognition**: Learn which tree types perform best in specific contexts
+- **Temporal Adaptation**: Adjust tree selection based on time patterns, previous failures, or environmental conditions
+- **Dynamic Switching**: Automatically select optimal tree templates based on execution context
+
+### Implementation Examples
+
+#### Tree Performance Metrics
+```
+Example Analysis:
+- Tree A: 80% validation success, 30% action success → Archive but deprioritize
+- Tree B: 60% validation success, 90% action success → Archive as high priority template
+- Tree C: 95% validation success, 10% action success → Analyze for over-optimization
+```
+
+#### Criteria Evolution Pattern
+```
+Historical Pattern Discovery:
+- "time < 10am" criterion → 85% action success
+- "weather = sunny" criterion → 90% action success  
+- "previous_action = failed" → Switch to conservative tree variant
+
+Auto-Refinement: Boost successful criteria weights, introduce context-switching logic
+```
+
+#### Validation Strategy Evolution
+```
+Initial: "Is action feasible?" → 80% pass, 40% execute successfully
+Evolved: "Is action feasible AND similar actions succeeded recently?" → 60% pass, 85% execute successfully
+```
+
+### Data Requirements for Implementation
+- Enhanced `TotLog` tracking with action outcome correlation
+- Tree performance metrics storage
+- Context metadata capture (time, previous results, environmental factors)
+- Archive system for successful tree configurations
+
+### Benefits
+- **Autonomous Improvement**: System learns from its own execution history
+- **Reduced Manual Tuning**: Automatic optimization of tree structures and validation criteria
+- **Adaptive Performance**: Better decision-making through accumulated experience
+- **Continuous Evolution**: Ongoing refinement without human intervention
+
+This approach transforms the current ToT system from static tree evaluation to a continuously learning and self-improving decision framework.
 
