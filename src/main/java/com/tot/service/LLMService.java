@@ -210,39 +210,51 @@ public class LLMService {
             String systemPrompt = String.format("""
                 You are evaluating a Tree of Thought decision structure with today's latest information compared to data from %s.
                 
-                Your task: Run through this Tree of Thought and provide both a decision and comprehensive analysis that focuses on changes over the %d-day period.
+                CRITICAL: You MUST systematically walk through the provided Tree of Thought structure node by node. DO NOT perform general self-analysis or commentary. You must follow the tree's decision logic exactly.
+                
+                Your task: Execute the Tree of Thought step-by-step and provide both a decision and comprehensive analysis that focuses on changes over the %d-day period.
                 
                 Instructions:
-                1. Analyze the provided Tree of Thought JSON structure
-                2. Use your access to real-time information and current data to evaluate each decision criteria
-                3. Compare today's data specifically with data from %s
-                4. Calculate percentage changes and identify trends over this %d-day period
-                5. Walk through the decision tree based on how conditions have evolved
-                6. Provide detailed reasoning for each evaluation step with temporal context
-                7. Determine if the final outcome represents a positive decision (true) or negative decision (false)
+                1. START with the root node of the provided Tree of Thought JSON structure
+                2. Evaluate EACH node's specific criteria using real-time information and current data
+                3. For each node evaluation, compare today's data specifically with end-of-day data from %s (use closing prices, final daily values, and end-of-day metrics whenever possible)
+                4. Based on the criteria evaluation, follow the tree's children mapping to the next node (e.g., if criteria is met, go to "yes" branch, otherwise "no" branch)
+                5. Continue traversing through each node until you reach a leaf node (node with no children)
+                6. Calculate percentage changes and identify trends over this %d-day period using day-end data points for each node's criteria
+                7. The final leaf node determines your decision outcome - provide detailed reasoning for each step of the tree traversal
+                
+                MANDATORY TREE TRAVERSAL FORMAT:
+                Start with: "TREE TRAVERSAL:"
+                For each node visited, document:
+                - Node ID: [nodeId]
+                - Content: [node content]
+                - Criteria: [node criteria]
+                - Current Data: [relevant current data for evaluation]
+                - Historical Data (%s): [relevant historical data]
+                - Evaluation Result: [met/not met with reasoning]
+                - Next Node: [which child node to follow]
                 
                 Response format: 
                 DECISION: true|false
                 CRITERIA: [Provide comprehensive analysis including:
-                - Today's current values vs %s values
-                - Exact percentage changes over %d days
-                - Direction of trend (improving/declining/stable)
-                - Momentum analysis (accelerating/decelerating changes)
-                - Significant events that occurred during this %d-day period
-                - Market sentiment evolution over this timeframe
-                - Volume, volatility, and other key metric changes
-                - Reasoning for each node evaluation with specific temporal context
+                - Step-by-step tree traversal results (not general analysis)
+                - Today's current values vs %s end-of-day values for each evaluated node
+                - Exact percentage changes over %d days (using closing/end-of-day data) for each node's criteria
+                - Direction of trend (improving/declining/stable) based on day-end comparisons for each decision point
+                - Momentum analysis (accelerating/decelerating changes) using daily closing data for each node
+                - Significant events that occurred during this %d-day period relevant to each node's criteria
+                - Market sentiment evolution over this timeframe using end-of-day indicators for each evaluation
+                - Final decision path taken through the tree with supporting data
                 This %d-day comparison data will be used for future tree refinement and trend analysis.]
                 
-                Always provide specific numbers, exact percentages, and date-based comparisons.
-                Focus on the CHANGE and MOMENTUM over exactly %d days, not just current values.
-                """, timeframe, comparisonDays, timeframe, comparisonDays, timeframe, comparisonDays, comparisonDays, comparisonDays, comparisonDays);
+                REMEMBER: Follow the tree structure exactly. Do not skip nodes or make assumptions. Evaluate each node's criteria methodically using end-of-day data comparisons.
+                """, timeframe, comparisonDays, timeframe, comparisonDays, timeframe, timeframe, comparisonDays, comparisonDays, comparisonDays);
 
             String userPrompt = String.format("Run through this TOT and provide decision + detailed criteria analysis comparing today's data with data from %s (%d days ago):\n%s", 
                 timeframe, comparisonDays, treeJson);
 
             logger.debug("Sending {}-day historical comparison validation request to Perplexity", comparisonDays);
-            String response = perplexityService.generateCompletionWithSystem(systemPrompt, userPrompt);
+            String response = perplexityService.generateCompletionWithSystemAndWebSearch(systemPrompt, userPrompt, comparisonDays);
 
             // Parse the response to extract decision and criteria
             return parseValidationResponse(response);
