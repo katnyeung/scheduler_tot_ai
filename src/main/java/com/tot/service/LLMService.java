@@ -131,44 +131,136 @@ public class LLMService {
     }
 
     /**
-     * Validate a Tree of Thought structure using latest internet data
+     * Validate a Tree of Thought structure using latest internet data with historical comparison
      * @param treeJson JSON representation of the tree
      * @return ValidationResult containing both decision and detailed criteria
      */
     public ValidationResult validateTreeWithCriteria(String treeJson) {
-        logger.info("Validating Tree of Thought with current data and detailed criteria");
+        logger.info("Validating Tree of Thought with current data and historical comparison");
 
         try {
             String systemPrompt = """
-                You are evaluating a Tree of Thought decision structure with today's latest information.
+                You are evaluating a Tree of Thought decision structure with today's latest information compared to historical data.
                 
-                Your task: Run through this Tree of Thought and provide both a decision and detailed analysis.
+                Your task: Run through this Tree of Thought and provide both a decision and comprehensive analysis that includes historical comparisons.
                 
                 Instructions:
                 1. Analyze the provided Tree of Thought JSON structure
                 2. Use your access to real-time information and current data to evaluate each decision criteria
-                3. Walk through the decision tree based on current facts and conditions
-                4. Provide detailed reasoning for each evaluation step
-                5. Determine if the final outcome represents a positive decision (true) or negative decision (false)
+                3. Compare today's data with historical trends (previous days, weeks, months as relevant)
+                4. Walk through the decision tree based on current facts, conditions, and how they differ from previous periods
+                5. Provide detailed reasoning for each evaluation step with historical context
+                6. Determine if the final outcome represents a positive decision (true) or negative decision (false)
                 
                 Response format: 
                 DECISION: true|false
-                CRITERIA: [Provide detailed analysis of current market conditions, specific data points, financial metrics, news sentiment, and reasoning for each node evaluation. Include specific numbers, percentages, or facts where available. This will be used for future tree refinement and analysis.]
+                CRITERIA: [Provide comprehensive analysis including:
+                - Current data points (prices, metrics, conditions today)
+                - Historical comparison (how today differs from yesterday, last week, last month)
+                - Trend analysis (improving, declining, stable patterns)
+                - Change percentages and specific differences from previous periods
+                - Market sentiment shifts over time
+                - Any significant events or changes that occurred recently
+                - Reasoning for each node evaluation with temporal context
+                This historical comparison data will be used for future tree refinement and trend analysis.]
                 
-                For investment decisions, include current stock prices, recent earnings, market trends, analyst opinions, and any relevant news or events.
-                Use current market data, news, trends, and any other relevant real-time information to make your determination.
+                For investment decisions, include:
+                - Current stock prices vs previous day/week/month prices
+                - Recent earnings vs historical earnings
+                - Market trends and how they've evolved
+                - Analyst opinion changes over time
+                - Recent news impact vs baseline conditions
+                - Volume, volatility, and momentum changes
+                
+                Always provide specific numbers, percentages, and date-based comparisons where available.
+                Focus on what has CHANGED rather than just current static values.
             """;
 
-            String userPrompt = "Run through this TOT and provide decision + detailed criteria analysis for today's data:\n" + treeJson;
+            String userPrompt = "Run through this TOT and provide decision + detailed criteria analysis comparing today's data with historical trends:\n" + treeJson;
 
-            logger.debug("Sending detailed validation request to Perplexity");
+            logger.debug("Sending historical comparison validation request to Perplexity");
             String response = perplexityService.generateCompletionWithSystem(systemPrompt, userPrompt);
 
             // Parse the response to extract decision and criteria
             return parseValidationResponse(response);
             
         } catch (Exception e) {
-            logger.error("Error validating tree with criteria: {}", e.getMessage(), e);
+            logger.error("Error validating tree with historical criteria: {}", e.getMessage(), e);
+            return new ValidationResult("false", "Error during validation: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Validate a Tree of Thought structure with specific historical comparison period
+     * @param treeJson JSON representation of the tree
+     * @param comparisonDays Number of days back to compare (e.g., 1 for yesterday, 7 for last week)
+     * @return ValidationResult containing both decision and detailed criteria
+     */
+    public ValidationResult validateTreeWithHistoricalComparison(String treeJson, int comparisonDays) {
+        logger.info("Validating Tree of Thought with {}-day historical comparison", comparisonDays);
+
+        try {
+            String timeframe = switch (comparisonDays) {
+                case 1 -> "yesterday";
+                case 7 -> "last week (7 days ago)";
+                case 30 -> "last month (30 days ago)";
+                default -> comparisonDays + " days ago";
+            };
+
+            String systemPrompt = String.format("""
+                You are evaluating a Tree of Thought decision structure with today's latest information compared to data from %s.
+                
+                CRITICAL: You MUST systematically walk through the provided Tree of Thought structure node by node. DO NOT perform general self-analysis or commentary. You must follow the tree's decision logic exactly.
+                
+                Your task: Execute the Tree of Thought step-by-step and provide both a decision and comprehensive analysis that focuses on changes over the %d-day period.
+                
+                Instructions:
+                1. START with the root node of the provided Tree of Thought JSON structure
+                2. Evaluate EACH node's specific criteria using real-time information and current data
+                3. For each node evaluation, compare today's data specifically with end-of-day data from %s (use closing prices, final daily values, and end-of-day metrics whenever possible)
+                4. Based on the criteria evaluation, follow the tree's children mapping to the next node (e.g., if criteria is met, go to "yes" branch, otherwise "no" branch)
+                5. Continue traversing through each node until you reach a leaf node (node with no children)
+                6. Calculate percentage changes and identify trends over this %d-day period using day-end data points for each node's criteria
+                7. The final leaf node determines your decision outcome - provide detailed reasoning for each step of the tree traversal
+                
+                MANDATORY TREE TRAVERSAL FORMAT:
+                Start with: "TREE TRAVERSAL:"
+                For each node visited, document:
+                - Node ID: [nodeId]
+                - Content: [node content]
+                - Criteria: [node criteria]
+                - Current Data: [relevant current data for evaluation]
+                - Historical Data (%s): [relevant historical data]
+                - Evaluation Result: [met/not met with reasoning]
+                - Next Node: [which child node to follow]
+                
+                Response format: 
+                DECISION: true|false
+                CRITERIA: [Provide comprehensive analysis including:
+                - Step-by-step tree traversal results (not general analysis)
+                - Today's current values vs %s end-of-day values for each evaluated node
+                - Exact percentage changes over %d days (using closing/end-of-day data) for each node's criteria
+                - Direction of trend (improving/declining/stable) based on day-end comparisons for each decision point
+                - Momentum analysis (accelerating/decelerating changes) using daily closing data for each node
+                - Significant events that occurred during this %d-day period relevant to each node's criteria
+                - Market sentiment evolution over this timeframe using end-of-day indicators for each evaluation
+                - Final decision path taken through the tree with supporting data
+                This %d-day comparison data will be used for future tree refinement and trend analysis.]
+                
+                REMEMBER: Follow the tree structure exactly. Do not skip nodes or make assumptions. Evaluate each node's criteria methodically using end-of-day data comparisons.
+                """, timeframe, comparisonDays, timeframe, comparisonDays, timeframe, timeframe, comparisonDays, comparisonDays, comparisonDays);
+
+            String userPrompt = String.format("Run through this TOT and provide decision + detailed criteria analysis comparing today's data with data from %s (%d days ago):\n%s", 
+                timeframe, comparisonDays, treeJson);
+
+            logger.debug("Sending {}-day historical comparison validation request to Perplexity", comparisonDays);
+            String response = perplexityService.generateCompletionWithSystemAndWebSearch(systemPrompt, userPrompt, comparisonDays);
+
+            // Parse the response to extract decision and criteria
+            return parseValidationResponse(response);
+            
+        } catch (Exception e) {
+            logger.error("Error validating tree with {}-day historical criteria: {}", comparisonDays, e.getMessage(), e);
             return new ValidationResult("false", "Error during validation: " + e.getMessage());
         }
     }

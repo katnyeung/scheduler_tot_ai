@@ -38,4 +38,10 @@ public interface TotNodeRepository extends JpaRepository<TotNode, String> {
      * Count nodes in a specific tree
      */
     long countByTreeId(String treeId);
+
+    /**
+     * Find all distinct tree IDs
+     */
+    @Query("SELECT DISTINCT t.treeId FROM TotNode t")
+    List<String> findAllTreeIds();
 }

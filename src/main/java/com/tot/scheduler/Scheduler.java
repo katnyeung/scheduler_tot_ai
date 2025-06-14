@@ -43,21 +43,32 @@ public class Scheduler {
     }
     
     /**
-     * Execute action for a specific tree ID using ActionService
+     * Execute action for a specific tree ID using ActionService with historical comparison
      * This provides an alternative execution path that can be used 
      * independently of the scheduled workflow
      * @param treeId The tree ID to execute action for
+     * @param comparisonDays Number of days back to compare for historical analysis
      */
-    public void executeActionForTree(String treeId) {
-        logger.info("Scheduler executing action for treeId {} at {}", treeId, LocalDateTime.now());
+    public void executeActionForTree(String treeId, int comparisonDays) {
+        logger.info("Scheduler executing action for treeId {} with {}-day comparison at {}", 
+                   treeId, comparisonDays, LocalDateTime.now());
         
         try {
-            // Use ActionService directly to execute the action
-            String result = actionService.executeActionForTree(treeId);
-            logger.info("ActionService execution completed for treeId {}: {}", treeId, result);
+            // Use ActionService directly to execute the action with historical comparison
+            String result = actionService.executeActionForTreeWithHistoricalComparison(treeId, comparisonDays);
+            logger.info("ActionService execution completed for treeId {} with {}-day comparison: {}", 
+                       treeId, comparisonDays, result);
         } catch (Exception e) {
-            logger.error("Error executing action via ActionService for treeId {}: {}", 
-                        treeId, e.getMessage(), e);
+            logger.error("Error executing action via ActionService for treeId {} with {}-day comparison: {}", 
+                        treeId, comparisonDays, e.getMessage(), e);
         }
+    }
+
+    /**
+     * Execute action for a specific tree ID using default 1-day historical comparison
+     * @param treeId The tree ID to execute action for
+     */
+    public void executeActionForTree(String treeId) {
+        executeActionForTree(treeId, 1);
     }
 }

@@ -92,10 +92,11 @@ public class ActionService {
             String treeJson = totService.getTreeOfThought(treeId);
             logger.info("Tree of thought retrieved for schedule {}", scheduleId);
 
-            // 3. Validate the tree with LLMService and get detailed criteria
-            logger.info("Starting LLM validation for schedule {}", scheduleId);
-            ValidationResult validationResult = llmService.validateTreeWithCriteria(treeJson);
-            logger.info("LLM validation completed for schedule {}: result={}", scheduleId, validationResult.getResult());
+            // 3. Validate the tree with LLMService using historical comparison
+            int comparisonDays = schedule.getComparisonDays() != null ? schedule.getComparisonDays() : 1;
+            logger.info("Starting LLM validation with {}-day historical comparison for schedule {}", comparisonDays, scheduleId);
+            ValidationResult validationResult = llmService.validateTreeWithHistoricalComparison(treeJson, comparisonDays);
+            logger.info("LLM validation with {}-day historical comparison completed for schedule {}: result={}", comparisonDays, scheduleId, validationResult.getResult());
 
             // 4. Log the tree evaluation with detailed criteria
             logService.logTreeEvaluation(treeId, treeJson, validationResult.getResult(), validationResult.getCriteria());
@@ -154,12 +155,13 @@ public class ActionService {
     }
 
     /**
-     * Execute action for a specific tree ID (used by ActionController)
+     * Execute action for a specific tree ID with configurable historical comparison
      * @param treeId The tree ID to process
+     * @param comparisonDays Number of days back to compare (e.g., 1 for yesterday, 7 for last week)
      * @return Result message indicating the action taken
      */
-    public String executeActionForTree(String treeId) {
-        logger.info("Executing action for treeId: {}", treeId);
+    public String executeActionForTreeWithHistoricalComparison(String treeId, int comparisonDays) {
+        logger.info("Executing action for treeId: {} with {}-day historical comparison", treeId, comparisonDays);
         
         try {
             // Get the tree of thought
@@ -170,10 +172,10 @@ public class ActionService {
                 throw new IllegalArgumentException("Tree not found for ID: " + treeId);
             }
 
-
-            // Validate the tree with LLMService and get detailed criteria
-            ValidationResult validationResult = llmService.validateTreeWithCriteria(treeJson);
-            logger.info("LLM validation completed for treeId {}: result={}", treeId, validationResult.getResult());
+            // Validate the tree with LLMService using specific historical comparison period
+            ValidationResult validationResult = llmService.validateTreeWithHistoricalComparison(treeJson, comparisonDays);
+            logger.info("LLM validation with {}-day historical comparison completed for treeId {}: result={}", 
+                comparisonDays, treeId, validationResult.getResult());
             
             // Log the tree evaluation with detailed criteria
             logService.logTreeEvaluation(treeId, treeJson, validationResult.getResult(), validationResult.getCriteria());
@@ -181,17 +183,19 @@ public class ActionService {
             // Determine action based on validation result
             String actionResult;
             if (validationResult.isPositive()) {
-                actionResult = "Action executed: Decision positive - " + validationResult.getCriteria().substring(0, Math.min(100, validationResult.getCriteria().length())) + "...";
-                logger.info("Executing positive action for treeId {}", treeId);
+                actionResult = String.format("Action executed: Decision positive (vs %d days ago) - %s...", 
+                    comparisonDays, validationResult.getCriteria().substring(0, Math.min(150, validationResult.getCriteria().length())));
+                logger.info("Executing positive action for treeId {} (vs {} days ago)", treeId, comparisonDays);
             } else {
-                actionResult = "Action executed: Hold (no action taken). Decision: negative - " + validationResult.getCriteria().substring(0, Math.min(100, validationResult.getCriteria().length())) + "...";
-                logger.info("Executing negative action (hold) for treeId {}", treeId);
+                actionResult = String.format("Action executed: Hold (no action taken). Decision: negative (vs %d days ago) - %s...", 
+                    comparisonDays, validationResult.getCriteria().substring(0, Math.min(150, validationResult.getCriteria().length())));
+                logger.info("Executing negative action (hold) for treeId {} (vs {} days ago)", treeId, comparisonDays);
             }
             
             return actionResult;
             
         } catch (Exception e) {
-            logger.error("Error executing action for treeId {}: {}", treeId, e.getMessage(), e);
+            logger.error("Error executing action for treeId {} with {}-day comparison: {}", treeId, comparisonDays, e.getMessage(), e);
             
             // Log the failure
             try {
@@ -200,9 +204,10 @@ public class ActionService {
                 logger.error("Failed to log validation failure: {}", logError.getMessage());
             }
             
-            throw new RuntimeException("Error executing action for tree " + treeId + ": " + e.getMessage());
+            throw new RuntimeException("Error executing action for tree " + treeId + " with " + comparisonDays + "-day comparison: " + e.getMessage());
         }
     }
+
 
     /**
      * Find schedules that are due for processing

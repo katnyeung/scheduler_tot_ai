@@ -133,4 +133,21 @@ public class TotService {
             throw new RuntimeException("Failed to save Tree of Thought from JSON", e);
         }
     }
+
+    /**
+     * Get all available tree IDs
+     * @return List of tree IDs
+     */
+    public List<String> getAllTreeIds() {
+        logger.info("Retrieving all tree IDs");
+        
+        try {
+            List<String> treeIds = totNodeRepository.findAllTreeIds();
+            logger.info("Found {} tree IDs", treeIds.size());
+            return treeIds;
+        } catch (Exception e) {
+            logger.error("Error retrieving tree IDs: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to retrieve tree IDs", e);
+        }
+    }
 }

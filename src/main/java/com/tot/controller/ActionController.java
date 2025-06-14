@@ -26,35 +26,45 @@ public class ActionController {
     }
 
     @PostMapping("/execute")
-    @Operation(summary = "Execute action", description = "Perform an action based on the evaluated TOT")
-    public ResponseEntity<String> executeAction(@RequestParam String treeId) {
+    @Operation(summary = "Execute action with historical comparison", 
+               description = "Perform an action based on the evaluated TOT with specific historical comparison period")
+    public ResponseEntity<String> executeAction(
+            @RequestParam String treeId, 
+            @RequestParam(defaultValue = "1") int comparisonDays) {
         LocalDateTime executionStart = LocalDateTime.now();
-        logger.info("Starting action execution for treeId {} at {}", treeId, executionStart);
+        logger.info("Starting action execution for treeId {} with {}-day historical comparison at {}", 
+                   treeId, comparisonDays, executionStart);
+        
+        // Validate comparisonDays parameter
+        if (comparisonDays < 1 || comparisonDays > 365) {
+            logger.error("Invalid comparisonDays parameter: {}. Must be between 1 and 365.", comparisonDays);
+            return ResponseEntity.badRequest().body("comparisonDays must be between 1 and 365");
+        }
         
         try {
-            // Delegate to ActionService for core processing
-            String actionResult = actionService.executeActionForTree(treeId);
+            // Delegate to ActionService for core processing with historical comparison
+            String actionResult = actionService.executeActionForTreeWithHistoricalComparison(treeId, comparisonDays);
             
             LocalDateTime executionEnd = LocalDateTime.now();
-            logger.info("Action execution completed for treeId {} at {}. Duration: {} ms", 
-                       treeId, executionEnd, 
+            logger.info("Action execution with {}-day comparison completed for treeId {} at {}. Duration: {} ms", 
+                       comparisonDays, treeId, executionEnd, 
                        java.time.Duration.between(executionStart, executionEnd).toMillis());
             
             return ResponseEntity.ok(actionResult);
             
         } catch (IllegalArgumentException e) {
-            logger.error("Invalid request for treeId {}: {}", treeId, e.getMessage());
+            logger.error("Invalid request for treeId {} with {}-day comparison: {}", treeId, comparisonDays, e.getMessage());
             return ResponseEntity.badRequest().body(e.getMessage());
             
         } catch (Exception e) {
             LocalDateTime executionEnd = LocalDateTime.now();
-            logger.error("Error executing action for treeId {} after {} ms: {}", 
-                        treeId, 
+            logger.error("Error executing action for treeId {} with {}-day comparison after {} ms: {}", 
+                        treeId, comparisonDays,
                         java.time.Duration.between(executionStart, executionEnd).toMillis(),
                         e.getMessage(), e);
             
             return ResponseEntity.internalServerError()
-                    .body("Error executing action for tree " + treeId + ": " + e.getMessage());
+                    .body("Error executing action for tree " + treeId + " with " + comparisonDays + "-day comparison: " + e.getMessage());
         }
     }
 }
