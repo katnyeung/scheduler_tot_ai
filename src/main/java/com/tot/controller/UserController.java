@@ -59,7 +59,7 @@ public class UserController {
 
     @PostMapping("/refine")
     @Operation(summary = "Refine ToT", description = "Refine an existing Tree of Thought with latest data and details")
-    public ResponseEntity<String> refineTot(@RequestParam String treeId, @RequestParam String prompt) {
+    public ResponseEntity<String> refineTot(@RequestParam String treeId, @RequestBody String prompt) {
         logger.info("Received request to refine ToT with treeId: {} and prompt: {}", treeId, prompt);
 
         try {
@@ -69,15 +69,11 @@ public class UserController {
             // Call the LLMService to refine the existing Tree of Thought with the new prompt
             String refinedTotJson = llmService.refineTreeOfThought(existingTreeJson, prompt);
 
-            // Save the refined tree JSON using TotService and get the treeId
-            String savedTreeId = totService.saveTreeOfThought(refinedTotJson);
-
-            // Return the treeId and info about saved tree
-            String response = String.format("Successfully refined and saved ToT with treeId: %s", savedTreeId);
-            return ResponseEntity.ok(response);
+            // Return the refined JSON directly for user review
+            return ResponseEntity.ok(refinedTotJson);
         } catch (Exception e) {
-            logger.error("Error refining and saving ToT: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().body("Error refining and saving ToT: " + e.getMessage());
+            logger.error("Error refining ToT: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Error refining ToT: " + e.getMessage());
         }
     }
 

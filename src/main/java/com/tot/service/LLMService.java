@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.util.Arrays;
 
 /**
  * Service for interacting with Language Learning Models using Perplexity API
@@ -12,11 +13,13 @@ import org.springframework.stereotype.Service;
 public class LLMService {
     private static final Logger logger = LoggerFactory.getLogger(LLMService.class);
     private final PerplexityService perplexityService;
+    private final StockDataService stockDataService;
 
     @Autowired
-    public LLMService(PerplexityService perplexityService) {
+    public LLMService(PerplexityService perplexityService, StockDataService stockDataService) {
         this.perplexityService = perplexityService;
-        logger.info("LLMService initialized with PerplexityService");
+        this.stockDataService = stockDataService;
+        logger.info("LLMService initialized with PerplexityService and StockDataService");
     }
 
     /**
@@ -28,24 +31,31 @@ public class LLMService {
         logger.info("Generating Tree of Thought from prompt");
 
         String systemPrompt = """
-            You are an expert in creating Tree of Thought (ToT) structures in JSON format.
+            You are an expert in creating Tree of Thought (ToT) structures in JSON format using binary decision logic.
             
-            Based on the user's prompt, create a comprehensive Tree of Thought structure.
+            Based on the user's prompt, create a comprehensive Tree of Thought structure that follows YES/NO decision patterns.
+            
+            IMPORTANT RULES FOR ToT STRUCTURE:
+            1. Each decision node should have binary outcomes: "yes" and "no" branches
+            2. Decision criteria should be clear, measurable, and binary-evaluable
+            3. Create a logical decision tree that leads to actionable conclusions
+            4. Use specific, data-driven criteria whenever possible
+            5. End with leaf nodes that represent final actions or decisions
             
             The structure should be an array of nodes, where each node has:
-            - nodeId: a unique identifier for the node
+            - nodeId: a unique identifier for the node (e.g., "root", "node_001", "node_002")
             - treeId: an identifier for the entire tree
-            - content: descriptive content for the node
-            - criteria: evaluation criteria for this node
-            - children: a mapping of branch keys (e.g., "yes", "no") to child nodeIds
+            - content: descriptive content for the node (the question or decision point)
+            - criteria: evaluation criteria for this node (must be yes/no evaluable)
+            - children: a mapping of "yes" and "no" to child nodeIds, or empty {} for leaf nodes
             
             Example format:
             [
               {
                 "nodeId": "root",
-                "treeId": "decision_tree_1",
-                "content": "Should we invest in this project?",
-                "criteria": "Evaluate if the project has a positive ROI and aligns with our strategy",
+                "treeId": "investment_decision",
+                "content": "Should we invest in this stock?",
+                "criteria": "Is the current stock price below the 52-week average and showing positive momentum?",
                 "children": {
                   "yes": "node_001",
                   "no": "node_002"
@@ -53,21 +63,38 @@ public class LLMService {
               },
               {
                 "nodeId": "node_001",
-                "treeId": "decision_tree_1",
-                "content": "Proceed with investment",
-                "criteria": "Allocate budget and resources",
-                "children": {}
+                "treeId": "investment_decision",
+                "content": "Check market conditions",
+                "criteria": "Is the overall market trend positive with low volatility?",
+                "children": {
+                  "yes": "node_003",
+                  "no": "node_004"
+                }
               },
               {
                 "nodeId": "node_002",
-                "treeId": "decision_tree_1",
+                "treeId": "investment_decision",
                 "content": "Reject investment",
-                "criteria": "Document rejection reasons",
+                "criteria": "Stock price is overvalued or showing negative momentum",
+                "children": {}
+              },
+              {
+                "nodeId": "node_003",
+                "treeId": "investment_decision",
+                "content": "Proceed with investment",
+                "criteria": "All conditions favorable - invest now",
+                "children": {}
+              },
+              {
+                "nodeId": "node_004",
+                "treeId": "investment_decision",
+                "content": "Wait for better conditions",
+                "criteria": "Market conditions unfavorable - postpone investment",
                 "children": {}
               }
             ]
             
-            Return ONLY the JSON array with the tree nodes, without any explanations.
+            Return ONLY the JSON array with the tree nodes, without any explanations or additional text.
         """;
 
         try {
@@ -94,24 +121,32 @@ public class LLMService {
         logger.info("Refining existing Tree of Thought with new prompt");
 
         String systemPrompt = """
-        You are an expert in refining Tree of Thought (ToT) structures in JSON format.
+        You are an expert in refining Tree of Thought (ToT) structures in JSON format using binary decision logic.
         
         You will be given an existing Tree of Thought structure and a new prompt requirement. Your task is to:
-        1. Analyze the existing structure while preserving its core logic
+        1. Analyze the existing structure while preserving its core logic and node relationships
         2. Enhance node content with more detailed descriptions based on the new prompt
-        3. Improve criteria with more specific evaluation metrics
-        4. Add any missing branches or decision paths relevant to the new prompt
-        5. Update with the latest relevant information
-        6. Ensure all node relationships remain valid
+        3. Improve criteria to be more specific, measurable, and binary-evaluable (yes/no)
+        4. Add any missing decision branches or paths relevant to the new prompt
+        5. Update with the latest relevant information and data-driven criteria
+        6. Ensure all node relationships remain valid and follow yes/no decision patterns
+        7. Preserve existing nodeIds and treeId unless expansion is needed
+        
+        IMPORTANT REFINEMENT RULES:
+        1. Maintain binary decision structure with "yes" and "no" branches
+        2. Make criteria more specific and measurable where possible
+        3. Ensure each decision point can be clearly evaluated as true/false
+        4. Add new nodes only if they enhance the decision logic
+        5. Keep the tree focused and avoid unnecessary complexity
         
         The structure should be an array of nodes, where each node has:
-        - nodeId: a unique identifier for the node (preserve existing IDs)
+        - nodeId: a unique identifier for the node (preserve existing IDs, add new ones if needed)
         - treeId: an identifier for the entire tree (preserve existing ID)
-        - content: descriptive content for the node (enhance this)
-        - criteria: evaluation criteria for this node (enhance this)
-        - children: a mapping of branch keys to child nodeIds (expand if needed)
+        - content: descriptive content for the node (enhance with more detail)
+        - criteria: evaluation criteria for this node (must be yes/no evaluable)
+        - children: a mapping of "yes" and "no" to child nodeIds, or empty {} for leaf nodes
         
-        Return the complete refined JSON array with all nodes, without any explanations.
+        Return the complete refined JSON array with all nodes, without any explanations or additional text.
     """;
 
         String userPrompt = "Here is the existing Tree of Thought to refine:\n" + treeJson + "\n\nNew prompt requirement:\n" + newPrompt;
@@ -253,11 +288,29 @@ public class LLMService {
             String userPrompt = String.format("Run through this TOT and provide decision + detailed criteria analysis comparing today's data with data from %s (%d days ago):\n%s", 
                 timeframe, comparisonDays, treeJson);
 
-            logger.debug("Sending {}-day historical comparison validation request to Perplexity", comparisonDays);
+            // Enrich prompt with real stock data if stock criteria detected
+            boolean stockDataEnriched = false;
+            if (stockDataService.containsStockCriteria(treeJson)) {
+                logger.info("Stock criteria detected, enriching prompt with real market data");
+                userPrompt = stockDataService.enrichPromptWithStockData(userPrompt, treeJson, comparisonDays);
+                stockDataEnriched = true;
+            }
+
+            logger.debug("Sending {}-day historical comparison validation request to Perplexity (stock enriched: {})", 
+                comparisonDays, stockDataEnriched);
             String response = perplexityService.generateCompletionWithSystemAndWebSearch(systemPrompt, userPrompt, comparisonDays);
 
-            // Parse the response to extract decision and criteria
-            return parseValidationResponse(response);
+            // Parse the response to extract decision and criteria with data source tracking
+            ValidationResult result = parseValidationResponse(response);
+            
+            // Create enhanced ValidationResult with stock data tracking
+            if (stockDataEnriched) {
+                return new ValidationResult(result.getResult(), result.getCriteria(), 
+                    Arrays.asList("Yahoo Finance API", "Perplexity Web Search"), null, true);
+            } else {
+                return new ValidationResult(result.getResult(), result.getCriteria(), 
+                    Arrays.asList("Perplexity Web Search"), null, false);
+            }
             
         } catch (Exception e) {
             logger.error("Error validating tree with {}-day historical criteria: {}", comparisonDays, e.getMessage(), e);
@@ -332,6 +385,14 @@ public class LLMService {
 
         // Trim whitespace
         response = response.trim();
+
+        // Find JSON array boundaries
+        int startIndex = response.indexOf('[');
+        int endIndex = response.lastIndexOf(']');
+        
+        if (startIndex != -1 && endIndex != -1 && endIndex > startIndex) {
+            response = response.substring(startIndex, endIndex + 1);
+        }
 
         return response;
     }
