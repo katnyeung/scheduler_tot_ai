@@ -26,7 +26,7 @@ mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 ### Database Access
-- **Production**: MariaDB at `localhost:3306/tot` (username: `root`, password: `root`)
+- **Production**: MariaDB at `localhost:3306/tot` (username: `root`, password: `***`)
 - **H2 Console**: http://localhost:8080/h2-console (enabled for development)
 - **H2 Connection**: `jdbc:h2:mem:testdb` (username: `sa`, no password)
 
