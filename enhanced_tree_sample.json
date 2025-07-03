@@ -1,0 +1,366 @@
+[
+  {
+    "nodeId": "node_001",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Positive recent news sentiment",
+    "criteria": "Is NVDA's current price ($157.61) above its previous 52-week high of $153.13?",
+    "children": {
+      "no": "node_004",
+      "yes": "node_003"
+    }
+  },
+  {
+    "nodeId": "node_002",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Negative recent news sentiment",
+    "criteria": "Search analyst reports: Do the majority of recent analyst ratings (past 30 days) recommend NVDA as Buy/Strong Buy?",
+    "children": {
+      "no": "node_006",
+      "yes": "node_005"
+    }
+  },
+  {
+    "nodeId": "node_003",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Positive news + breaking all-time highs",
+    "criteria": "Search Reddit/StockTwits: Is the overall sentiment on investor forums bullish for NVDA over the past 3 days?",
+    "children": {
+      "no": "node_008",
+      "yes": "node_007"
+    }
+  },
+  {
+    "nodeId": "node_004",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Positive news but within previous range",
+    "criteria": "Is NVDA's current price above its 50-day moving average of $146.50?",
+    "children": {
+      "no": "node_010",
+      "yes": "node_009"
+    }
+  },
+  {
+    "nodeId": "node_005",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Negative news but positive analyst sentiment",
+    "criteria": "Search financial websites: Do technical analysis reports from major sites show bullish signals for NVDA?",
+    "children": {
+      "no": "node_012",
+      "yes": "node_011"
+    }
+  },
+  {
+    "nodeId": "node_006",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Negative news and analyst sentiment",
+    "criteria": "Search Twitter/X: Is NVDA mentioned more positively than negatively by financial influencers in the past 48 hours?",
+    "children": {
+      "no": "node_014",
+      "yes": "node_013"
+    }
+  },
+  {
+    "nodeId": "node_007",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "All-time highs with bullish sentiment",
+    "criteria": "Is the current PE ratio (~49.37) below 55.0?",
+    "children": {
+      "no": "node_016",
+      "yes": "node_015"
+    }
+  },
+  {
+    "nodeId": "node_008",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "New highs but mixed forum sentiment",
+    "criteria": "Search earnings call transcripts: Were the most recent NVDA earnings call comments predominantly optimistic about future guidance?",
+    "children": {
+      "no": "node_018",
+      "yes": "node_017"
+    }
+  },
+  {
+    "nodeId": "node_009",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Above key moving average with positive news",
+    "criteria": "Is the current price within 10% of the 52-week low ($86.62)?",
+    "children": {
+      "no": "node_020",
+      "yes": "node_019"
+    }
+  },
+  {
+    "nodeId": "node_010",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Below 50-day MA despite positive news",
+    "criteria": "Search insider trading: Have NVDA executives made any significant stock purchases in the past 90 days?",
+    "children": {
+      "no": "node_022",
+      "yes": "node_021"
+    }
+  },
+  {
+    "nodeId": "node_011",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Technical analysis bullish despite news concerns",
+    "criteria": "Is the current price above the 200-day moving average of $140.31?",
+    "children": {
+      "no": "node_024",
+      "yes": "node_023"
+    }
+  },
+  {
+    "nodeId": "node_012",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Bearish across news, analysts, and technical analysis",
+    "criteria": "Search options flow: Is the put/call ratio for NVDA options showing more bullish than bearish sentiment?",
+    "children": {
+      "no": "node_026",
+      "yes": "node_025"
+    }
+  },
+  {
+    "nodeId": "node_013",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Social media provides some optimism",
+    "criteria": "Is the revenue growth TTM YoY above 80% (current: 86.17%)?",
+    "children": {
+      "no": "node_028",
+      "yes": "node_027"
+    }
+  },
+  {
+    "nodeId": "node_014",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Negative sentiment across all channels",
+    "criteria": "Search AI/semiconductor sector news: Is the overall AI sector sentiment positive in recent industry reports?",
+    "children": {
+      "no": "node_030",
+      "yes": "node_029"
+    }
+  },
+  {
+    "nodeId": "node_015",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "New highs with reasonable valuation",
+    "criteria": "Is the 10-day average trading volume above 173.53 million?",
+    "children": {
+      "no": "node_032",
+      "yes": "node_031"
+    }
+  },
+  {
+    "nodeId": "node_016",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "New highs but high valuation concerns",
+    "criteria": "Search institutional research: Do recent buy-side research reports rate NVDA as outperform?",
+    "children": {
+      "no": "node_034",
+      "yes": "node_033"
+    }
+  },
+  {
+    "nodeId": "node_017",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Management optimistic despite mixed sentiment",
+    "criteria": "Is the ROE TTM above 100% (current: 106.92%)?",
+    "children": {
+      "no": "node_036",
+      "yes": "node_035"
+    }
+  },
+  {
+    "nodeId": "node_018",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Pessimistic management and mixed sentiment",
+    "criteria": "Search competitor analysis: Is NVDA maintaining market share vs AMD/Intel in recent industry reports?",
+    "children": {
+      "no": "node_038",
+      "yes": "node_037"
+    }
+  },
+  {
+    "nodeId": "node_019",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Near lows despite positive indicators",
+    "criteria": "BUY 85% - Significant upside potential from current levels with strong fundamentals support",
+    "children": {}
+  },
+  {
+    "nodeId": "node_020",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Strong technical position with positive news",
+    "criteria": "Is the gross margin TTM above 70% (current: 70.52%)?",
+    "children": {
+      "no": "node_040",
+      "yes": "node_039"
+    }
+  },
+  {
+    "nodeId": "node_021",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Insider buying shows confidence despite weakness",
+    "criteria": "HOLD 65% - Management confidence indicates potential recovery, monitor closely",
+    "children": {}
+  },
+  {
+    "nodeId": "node_022",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "No insider support with technical weakness",
+    "criteria": "SELL 70% - Multiple concerning signals without management support",
+    "children": {}
+  },
+  {
+    "nodeId": "node_023",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Technical strength above long-term trend",
+    "criteria": "HOLD 75% - Strong technical indicators support maintaining position",
+    "children": {}
+  },
+  {
+    "nodeId": "node_024",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Below long-term trend despite some positives",
+    "criteria": "SELL 60% - Technical weakness outweighs positive factors",
+    "children": {}
+  },
+  {
+    "nodeId": "node_025",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Options traders still bullish despite broader negativity",
+    "criteria": "HOLD 55% - Smart money contrarian positioning provides moderate confidence",
+    "children": {}
+  },
+  {
+    "nodeId": "node_026",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Bearish across all sentiment and technical indicators",
+    "criteria": "SELL 90% - Overwhelming negative confluence across all indicators",
+    "children": {}
+  },
+  {
+    "nodeId": "node_027",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Strong revenue growth supports social optimism",
+    "criteria": "HOLD 70% - Solid fundamentals support contrarian social sentiment view",
+    "children": {}
+  },
+  {
+    "nodeId": "node_028",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Slowing growth confirms negative sentiment",
+    "criteria": "SELL 80% - Fundamental deterioration aligns with negative sentiment",
+    "children": {}
+  },
+  {
+    "nodeId": "node_029",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Sector tailwinds may overcome individual negativity",
+    "criteria": "HOLD 50% - Sector momentum provides balanced outlook despite individual concerns",
+    "children": {}
+  },
+  {
+    "nodeId": "node_030",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Sector and individual headwinds align",
+    "criteria": "SELL 85% - Multiple levels of negative pressure from sector and individual factors",
+    "children": {}
+  },
+  {
+    "nodeId": "node_031",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "New highs with strong volume confirmation",
+    "criteria": "Search Loop Capital price target: Has any analyst raised NVDA target to $250 recently?",
+    "children": {
+      "no": "node_042",
+      "yes": "node_041"
+    }
+  },
+  {
+    "nodeId": "node_032",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "New highs but low volume concern",
+    "criteria": "SELL 45% - Take partial profits due to volume concerns, but maintain some exposure",
+    "children": {}
+  },
+  {
+    "nodeId": "node_033",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Institutional support despite valuation concerns",
+    "criteria": "HOLD 80% - Professional investor confidence outweighs valuation concerns",
+    "children": {}
+  },
+  {
+    "nodeId": "node_034",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "High valuation without institutional support",
+    "criteria": "SELL 75% - Valuation risk amplified by lack of professional backing",
+    "children": {}
+  },
+  {
+    "nodeId": "node_035",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Exceptional profitability supports management optimism",
+    "criteria": "HOLD 85% - Outstanding ROE validates management confidence and growth prospects",
+    "children": {}
+  },
+  {
+    "nodeId": "node_036",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Management optimism not backed by ROE",
+    "criteria": "SELL 65% - Disconnect between management guidance and profitability metrics",
+    "children": {}
+  },
+  {
+    "nodeId": "node_037",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Maintaining competitive position despite challenges",
+    "criteria": "HOLD 70% - Market leadership position remains intact despite headwinds",
+    "children": {}
+  },
+  {
+    "nodeId": "node_038",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Losing competitive ground with negative sentiment",
+    "criteria": "SELL 80% - Competitive deterioration combined with negative sentiment",
+    "children": {}
+  },
+  {
+    "nodeId": "node_039",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Strong margins support technical strength",
+    "criteria": "HOLD 90% - Multiple positive factors align for strong conviction hold",
+    "children": {}
+  },
+  {
+    "nodeId": "node_040",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Margin pressure despite positive technicals",
+    "criteria": "HOLD 55% - Monitor margin trends closely, maintain cautious position",
+    "children": {}
+  },
+  {
+    "nodeId": "node_041",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Street-high price targets with volume confirmation",
+    "criteria": "HOLD 95% - All indicators extremely bullish, high conviction hold",
+    "children": {}
+  },
+  {
+    "nodeId": "node_042",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Good volume but no exceptional price targets",
+    "criteria": "HOLD 75% - Solid technical setup supports maintaining position",
+    "children": {}
+  },
+  {
+    "nodeId": "root",
+    "treeId": "NVDA_CLAUDE_HOLD_OR_SELL_20250627",
+    "content": "Should I sell or hold NVDA?",
+    "criteria": "Search recent news: Are there more positive than negative NVDA news articles in the past 7 days?",
+    "children": {
+      "no": "node_002",
+      "yes": "node_001"
+    }
+  }
+]

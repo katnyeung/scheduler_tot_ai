@@ -41,7 +41,7 @@ public class UserController {
         logger.info("Received request to generate ToT with prompt: {}", prompt);
 
         try {
-            // Call the LLMService to generate a Tree of Thought
+            // Call the LLMService to generate a Tree of Thought (implementation selected by feature flag)
             String generatedTotJson = llmService.generateTreeOfThought(prompt);
 
             // Save the generated tree JSON using TotService and get the treeId
@@ -65,7 +65,7 @@ public class UserController {
             // Fetch the existing tree JSON by treeId
             String existingTreeJson = totService.getTreeOfThought(treeId);
 
-            // Call the LLMService to refine the existing Tree of Thought with the new prompt
+            // Call the LLMService to refine the existing Tree of Thought (implementation selected by feature flag)
             String refinedTotJson = llmService.refineTreeOfThought(existingTreeJson, prompt);
 
             // Return the refined JSON directly for user review
