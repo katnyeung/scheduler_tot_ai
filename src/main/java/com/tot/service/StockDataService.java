@@ -9,10 +9,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.MatchResult;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -68,7 +67,7 @@ public class StockDataService {
         Matcher matcher = pattern.matcher(treeJson);
         
         return matcher.results()
-                .map(result -> result.group())
+                .map(MatchResult::group)
                 .filter(this::isLikelyStockSymbol)
                 .filter(this::isValidStockSymbol)
                 .distinct()
@@ -155,7 +154,17 @@ public class StockDataService {
                     .retrieve()
                     .body(String.class);
 
-            logger.info("historical stock metrics data {}", response);
+            // Filter response to only log the metric data, excluding the large series data
+            try {
+                JsonNode root = objectMapper.readTree(response);
+                JsonNode metricOnly = root.path("metric");
+                String filteredResponse = objectMapper.writeValueAsString(metricOnly);
+                logger.info("historical stock metrics data (metric only): {}", filteredResponse);
+            } catch (Exception e) {
+                logger.warn("Could not filter response for logging: {}", e.getMessage());
+                logger.info("historical stock metrics data (full response)");
+            }
+            
             return parseFinnhubMetricResponse(response, symbol);
         } catch (RestClientException e) {
             logger.error("Error fetching historical metrics for {}: {}", symbol, e.getMessage());
