@@ -89,7 +89,8 @@ public class TotService {
         try {
             // Parse the JSON into a list of node objects
             List<Map<String, Object>> nodeList = objectMapper.readValue(
-                    treeJson, new TypeReference<List<Map<String, Object>>>() {});
+                    treeJson, new TypeReference<>() {
+                    });
 
             List<TotNode> savedNodes = new ArrayList<>();
 
@@ -97,11 +98,21 @@ public class TotService {
             for (Map<String, Object> nodeMap : nodeList) {
                 TotNode node = new TotNode();
 
-                // Set basic properties
-                node.setNodeId((String) nodeMap.get("nodeId"));
-                node.setTreeId((String) nodeMap.get("treeId"));
-                node.setContent((String) nodeMap.get("content"));
-                node.setCriteria((String) nodeMap.get("criteria"));
+                // Explicitly set properties using JSON key names to avoid field order dependency
+                String nodeId = (String) nodeMap.get("nodeId");
+                String treeId = (String) nodeMap.get("treeId");
+                String content = (String) nodeMap.get("content");
+                String criteria = (String) nodeMap.get("criteria");
+                
+                // Log the values being set for debugging
+                logger.debug("Setting node - nodeId: {}, treeId: {}, content: {}, criteria: {}", 
+                            nodeId, treeId, content, criteria);
+                
+                // Set properties explicitly
+                node.setNodeId(nodeId);
+                node.setTreeId(treeId);
+                node.setContent(content);
+                node.setCriteria(criteria);
 
                 // Handle children map
                 @SuppressWarnings("unchecked")
@@ -114,7 +125,8 @@ public class TotService {
                 // Save node to repository
                 TotNode savedNode = totNodeRepository.save(node);
                 savedNodes.add(savedNode);
-                logger.debug("Saved node: nodeId={}, treeId={}", savedNode.getNodeId(), savedNode.getTreeId());
+                logger.debug("Saved node: nodeId={}, treeId={}, content={}", 
+                            savedNode.getNodeId(), savedNode.getTreeId(), savedNode.getContent());
             }
 
             logger.info("Saved {} nodes for Tree of Thought", savedNodes.size());

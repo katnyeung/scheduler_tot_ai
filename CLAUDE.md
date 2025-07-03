@@ -17,15 +17,23 @@ mvn clean package
 
 # Run tests
 mvn test
+
+# Run specific test class
+mvn test -Dtest=ClassName
+
+# Run with specific profile
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
 ### Database Access
-- H2 Console: http://localhost:8080/h2-console
-- Default connection: `jdbc:h2:mem:testdb` (username: `sa`, no password)
+- **Production**: MariaDB at `localhost:3306/tot` (username: `root`, password: `root`)
+- **H2 Console**: http://localhost:8080/h2-console (enabled for development)
+- **H2 Connection**: `jdbc:h2:mem:testdb` (username: `sa`, no password)
 
 ### API Documentation
-- Swagger UI: http://localhost:8080/swagger-ui.html
-- Application runs on port 8080
+- **Swagger UI**: http://localhost:8080/swagger-ui.html
+- **OpenAPI Docs**: http://localhost:8080/v3/api-docs
+- **Application Port**: 8080
 
 ## Architecture Overview
 
@@ -62,6 +70,23 @@ This is a Tree of Thought (ToT) scheduling system that combines AI reasoning wit
 6. RefinementService updates tree based on results
 
 ### Configuration
-- Perplexity API key in `application.properties` (marked as ****)
-- Async processing enabled via `AsyncConfig`
-- All services use constructor injection with `@Autowired`
+- **Perplexity API**: Key configured in `application.properties` for LLM validation
+- **Stock Data API**: Finnhub API integration for real-time stock data validation
+- **Scheduler**: Cron expression `0 */5 * * * *` (every 5 minutes)
+- **Async Processing**: Enabled via `@EnableAsync` and `AsyncConfig`
+- **Database**: MariaDB in production, H2 for development/testing
+- **Debug Logging**: Enabled for `com.tot` package for troubleshooting
+
+### Key Technical Details
+- **Spring Boot 3.4.3** with Java-based configuration
+- **JPA/Hibernate** with automatic schema updates (`ddl-auto=update`)
+- **RESTful APIs** with OpenAPI 3.0 documentation
+- **Lombok** for boilerplate reduction
+- **WebFlux** for reactive programming support
+- **Constructor-based dependency injection** throughout
+
+### Testing Framework
+- **JUnit 5 (Jupiter)** for unit testing
+- **Mockito** for mocking dependencies
+- **AssertJ** for fluent assertions
+- No test files currently exist - consider adding test coverage

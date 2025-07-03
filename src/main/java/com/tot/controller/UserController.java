@@ -1,6 +1,5 @@
 package com.tot.controller;
 
-import com.tot.entity.TotNode;
 import com.tot.service.LLMService;
 import com.tot.service.TotService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -193,32 +192,33 @@ public class UserController {
     }
 
     @PostMapping("/save")
-    @Operation(summary = "Save ToT", description = "Save the Tree of Thought structure into the database")
+    @Operation(summary = "Save ToT", description = "Create a new independent Tree of Thought with the provided treeId")
     public ResponseEntity<String> saveTot(@RequestParam String treeId, @RequestBody String treeJson) {
-        logger.info("Received request to save ToT for treeId: {}", treeId);
+        logger.info("Received request to create new independent ToT with treeId: {}", treeId);
 
         try {
             // Parse the JSON into a list of node objects
             List<Map<String, Object>> nodeList = objectMapper.readValue(
                     treeJson, new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
 
-            // Update each node's treeId to the provided treeId
+            // Create new independent tree - ignore any treeId in JSON, use parameter treeId for all nodes
             for (Map<String, Object> nodeMap : nodeList) {
+                // Always use the parameter treeId, ignore any treeId in the JSON
                 nodeMap.put("treeId", treeId);
             }
 
             // Convert updated nodeList back to JSON string
             String updatedTreeJson = objectMapper.writeValueAsString(nodeList);
 
-            // Save the updated tree JSON using TotService and get the treeId
+            // Save the new tree JSON using TotService
             String savedTreeId = totService.saveTreeOfThought(updatedTreeJson);
 
-            // Return the treeId and info about saved tree
-            String response = String.format("Updated and saved ToT with treeId: %s", savedTreeId);
+            // Return success message
+            String response = String.format("Successfully created new independent ToT with treeId: %s", savedTreeId);
             return ResponseEntity.ok(response);
         } catch (Exception e) {
-            logger.error("Error saving ToT: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError().body("Error saving ToT: " + e.getMessage());
+            logger.error("Error creating new ToT: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Error creating new ToT: " + e.getMessage());
         }
     }
 
