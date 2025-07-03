@@ -42,7 +42,7 @@ public class ActionController {
         }
         
         try {
-            // Delegate to ActionService for core processing with historical comparison
+            // Delegate to ActionService for core processing with historical comparison (service selected by feature flag)
             String actionResult = actionService.executeActionForTreeWithHistoricalComparison(treeId, comparisonDays);
             
             LocalDateTime executionEnd = LocalDateTime.now();

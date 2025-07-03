@@ -92,7 +92,7 @@ public class ActionService {
             String treeJson = totService.getTreeOfThought(treeId);
             logger.info("Tree of thought retrieved for schedule {}", scheduleId);
 
-            // 3. Validate the tree with LLMService using historical comparison
+            // 3. Validate the tree with LLMService using historical comparison (service selected by feature flag)
             int comparisonDays = schedule.getComparisonDays() != null ? schedule.getComparisonDays() : 1;
             logger.info("Starting LLM validation with {}-day historical comparison for schedule {}", comparisonDays, scheduleId);
             ValidationResult validationResult = llmService.validateTreeWithHistoricalComparison(treeJson, comparisonDays);
@@ -154,6 +154,7 @@ public class ActionService {
         logger.info("Action executed successfully: {}", action.getId());
     }
 
+
     /**
      * Execute action for a specific tree ID with configurable historical comparison
      * @param treeId The tree ID to process
@@ -172,7 +173,7 @@ public class ActionService {
                 throw new IllegalArgumentException("Tree not found for ID: " + treeId);
             }
 
-            // Validate the tree with LLMService using specific historical comparison period
+            // Validate the tree with LLMService using specific historical comparison period (service selected by feature flag)
             ValidationResult validationResult = llmService.validateTreeWithHistoricalComparison(treeJson, comparisonDays);
             logger.info("LLM validation with {}-day historical comparison completed for treeId {}: result={}", 
                 comparisonDays, treeId, validationResult.getResult());
