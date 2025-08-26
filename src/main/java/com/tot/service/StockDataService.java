@@ -90,36 +90,30 @@ public class StockDataService {
         }
 
         StringBuilder enrichedPrompt = new StringBuilder(originalPrompt);
-        enrichedPrompt.append("\n\n=== REAL MARKET DATA ===\n");
+        enrichedPrompt.append("\n\n=== STOCK DATA FOR TREE ANALYSIS ===\n");
+        enrichedPrompt.append("IMPORTANT: Each stock's metrics are labeled with symbol. Do NOT mix data between stocks.\n\n");
 
         for (String symbol : symbols) {
+            enrichedPrompt.append(String.format("▼▼▼ %s STOCK DATA ▼▼▼\n", symbol));
+            
             try {
                 StockData currentData = fetchCurrentStockData(symbol);
                 StockData historicalData = fetchHistoricalStockData(symbol, comparisonDays);
                 
                 if (currentData != null && historicalData != null) {
-                    double priceChange = currentData.price - historicalData.price;
-                    double percentChange = (priceChange / historicalData.price) * 100;
-                    
-                    enrichedPrompt.append(String.format("""
-                        %s:
-                        - Current Price: $%.2f
-                        - 52-Week Low: $%.2f
-                        - Change from 52W Low: $%.2f (%.2f%%)
-                        - Average Volume: %,d
-                        - Market Cap: $%.2fB
-                        
-                        """, symbol, currentData.price, historicalData.price,
-                        priceChange, percentChange, historicalData.volume,
-                        currentData.marketCap / 1_000_000_000.0));
+                    enrichedPrompt.append(String.format("Current Price (%s): $%.2f\n", symbol, currentData.price));
+                    String formattedMetrics = formatHistoricalMetrics(symbol, historicalData);
+                    enrichedPrompt.append(formattedMetrics);
                 }
             } catch (Exception e) {
                 logger.warn("Failed to fetch data for symbol {}: {}", symbol, e.getMessage());
-                enrichedPrompt.append(String.format("%s: Data unavailable\n", symbol));
+                enrichedPrompt.append(String.format("%s: Data unavailable - %s\n", symbol, e.getMessage()));
             }
+            
+            enrichedPrompt.append(String.format("▲▲▲ END %s DATA ▲▲▲\n\n", symbol));
         }
 
-        enrichedPrompt.append("=== END REAL DATA ===\nUse the above REAL data (not web search) for your analysis.\n\n");
+        enrichedPrompt.append("=== REMINDER: Use symbol-specific data only ===\n\n");
         return enrichedPrompt.toString();
     }
 
@@ -345,6 +339,69 @@ public class StockDataService {
     private boolean containsStockSymbol(String content) {
         String[] symbols = extractStockSymbols(content);
         return symbols.length > 0;
+    }
+
+    /**
+     * Formats comprehensive historical stock metrics with symbol labeling
+     */
+    private String formatHistoricalMetrics(String symbol, StockData historicalData) {
+        try {
+            // Re-fetch the full metrics response to get all historical data
+            String url = String.format("/api/v1/stock/metric?symbol=%s&metric=all&token=%s", symbol, stockApiKey);
+            String response = restClient.get()
+                    .uri(url)
+                    .retrieve()
+                    .body(String.class);
+            
+            JsonNode root = objectMapper.readTree(response);
+            JsonNode metric = root.path("metric");
+            
+            if (metric.isMissingNode()) {
+                return String.format("%s: No historical metrics available\n", symbol);
+            }
+            
+            StringBuilder formatted = new StringBuilder();
+            formatted.append(String.format("=== %s HISTORICAL ANALYSIS DATA ===\n", symbol));
+            
+            // Volume & Trading Data
+            formatted.append(String.format("10-Day Avg Volume (%s): %.2f M\n", symbol, metric.path("10DayAverageTradingVolume").asDouble()));
+            formatted.append(String.format("3-Month Avg Volume (%s): %.2f M\n", symbol, metric.path("3MonthAverageTradingVolume").asDouble()));
+            
+            // Price Performance  
+            formatted.append(String.format("52W High (%s): $%.2f\n", symbol, metric.path("52WeekHigh").asDouble()));
+            formatted.append(String.format("52W Low (%s): $%.2f\n", symbol, metric.path("52WeekLow").asDouble()));
+            formatted.append(String.format("5-Day Return (%s): %.2f%%\n", symbol, metric.path("5DayPriceReturnDaily").asDouble()));
+            formatted.append(String.format("13W Return (%s): %.2f%%\n", symbol, metric.path("13WeekPriceReturnDaily").asDouble()));
+            formatted.append(String.format("YTD Return (%s): %.2f%%\n", symbol, metric.path("yearToDatePriceReturnDaily").asDouble()));
+            
+            // Valuation Metrics
+            formatted.append(String.format("P/E Ratio (%s): %.1f\n", symbol, metric.path("peTTM").asDouble()));
+            formatted.append(String.format("P/B Ratio (%s): %.2f\n", symbol, metric.path("pb").asDouble()));
+            formatted.append(String.format("Beta (%s): %.2f\n", symbol, metric.path("beta").asDouble()));
+            
+            // Growth Metrics
+            formatted.append(String.format("Revenue Growth TTM (%s): %.1f%%\n", symbol, metric.path("revenueGrowthTTMYoy").asDouble()));
+            formatted.append(String.format("EPS Growth TTM (%s): %.1f%%\n", symbol, metric.path("epsGrowthTTMYoy").asDouble()));
+            formatted.append(String.format("Revenue Growth 3Y (%s): %.1f%%\n", symbol, metric.path("revenueGrowth3Y").asDouble()));
+            
+            // Profitability  
+            formatted.append(String.format("Gross Margin (%s): %.1f%%\n", symbol, metric.path("grossMarginTTM").asDouble()));
+            formatted.append(String.format("Operating Margin (%s): %.1f%%\n", symbol, metric.path("operatingMarginTTM").asDouble()));
+            formatted.append(String.format("Net Margin (%s): %.1f%%\n", symbol, metric.path("netProfitMarginTTM").asDouble()));
+            
+            // Financial Health
+            formatted.append(String.format("Current Ratio (%s): %.2f\n", symbol, metric.path("currentRatioQuarterly").asDouble()));
+            formatted.append(String.format("ROE (%s): %.1f%%\n", symbol, metric.path("roeTTM").asDouble()));
+            formatted.append(String.format("Market Cap (%s): $%.0f M\n", symbol, metric.path("marketCapitalization").asDouble()));
+            
+            formatted.append(String.format("=== END %s ANALYSIS DATA ===\n", symbol));
+            
+            return formatted.toString();
+            
+        } catch (Exception e) {
+            logger.error("Error formatting comprehensive metrics for {}: {}", symbol, e.getMessage());
+            return String.format("%s: Historical metrics formatting error\n", symbol);
+        }
     }
 
     /**

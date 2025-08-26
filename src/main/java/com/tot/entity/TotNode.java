@@ -20,7 +20,9 @@ public class TotNode {
     @Id
     private String treeId;
 
+    @Column(name = "content", columnDefinition = "TEXT")
     private String content;  // Content of the node (e.g., description/details)
+    @Column(name = "criteria", columnDefinition = "TEXT")
     private String criteria;   // Prompt used for LLM evaluation
 
     @ElementCollection
