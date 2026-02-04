@@ -70,6 +70,7 @@ public class ScheduleService {
         schedule.setTargetNodeId(treeId);
         schedule.setScheduledTime(targetDateTime);
         schedule.setComparisonDays(comparisonDays);
+        schedule.setServiceType("stock"); // Default to stock service
         schedule.setStatus("PENDING");
 
         // Create a default action if none exists
@@ -81,6 +82,55 @@ public class ScheduleService {
 
         Schedule savedSchedule = scheduleRepository.save(schedule);
         logger.info("Created schedule with ID: {} for treeId: {}", savedSchedule.getId(), treeId);
+
+        return savedSchedule;
+    }
+
+    /**
+     * Create a new schedule for a specific tree ID with target date, comparison period, and service type
+     * @param treeId The tree ID to schedule
+     * @param targetDateTime The target date and time for execution
+     * @param comparisonDays Number of days back to compare for historical analysis
+     * @param serviceType Type of LLM service to use ("stock", "generic", etc.)
+     * @return The created schedule
+     */
+    @Transactional
+    public Schedule createSchedule(String treeId, LocalDateTime targetDateTime, Integer comparisonDays, String serviceType) {
+        logger.info("Creating schedule for treeId: {} at {} with {}-day comparison using {} service", treeId, targetDateTime, comparisonDays, serviceType);
+
+        // Validate inputs
+        if (treeId == null || treeId.trim().isEmpty()) {
+            throw new IllegalArgumentException("Tree ID cannot be null or empty");
+        }
+        if (targetDateTime == null) {
+            throw new IllegalArgumentException("Target date time cannot be null");
+        }
+        if (targetDateTime.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("Target date time cannot be in the past");
+        }
+        if (comparisonDays == null || comparisonDays < 1 || comparisonDays > 365) {
+            throw new IllegalArgumentException("Comparison days must be between 1 and 365");
+        }
+        if (serviceType == null || serviceType.trim().isEmpty()) {
+            serviceType = "stock"; // Default fallback
+        }
+
+        Schedule schedule = new Schedule();
+        schedule.setTargetNodeId(treeId);
+        schedule.setScheduledTime(targetDateTime);
+        schedule.setComparisonDays(comparisonDays);
+        schedule.setServiceType(serviceType);
+        schedule.setStatus("PENDING");
+
+        // Create a default action if none exists
+        Action action = new Action();
+        action.setActionType("TOT_EVALUATION");
+        action.setActionData("{\"description\":\"Tree of Thought evaluation with " + comparisonDays + "-day historical comparison using " + serviceType + " service\"}");
+        Action savedAction = actionRepository.save(action);
+        schedule.setAction(savedAction);
+
+        Schedule savedSchedule = scheduleRepository.save(schedule);
+        logger.info("Schedule created successfully with ID: {}", savedSchedule.getId());
 
         return savedSchedule;
     }

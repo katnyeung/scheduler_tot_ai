@@ -27,6 +27,9 @@ public class Schedule {
     @Column(columnDefinition = "INTEGER DEFAULT 1")
     private Integer comparisonDays; // Number of days back to compare for historical analysis
 
+    @Column(columnDefinition = "VARCHAR(50) DEFAULT 'stock'")
+    private String serviceType; // Type of LLM service to use ("stock", "generic", etc.)
+
     @ManyToOne
     @JoinColumn(name = "action_id")
     private Action action; // Action to perform when scheduled
